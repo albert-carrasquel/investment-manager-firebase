@@ -502,7 +502,7 @@ const App = () => {
         <header className="mb-8 p-4 bg-white shadow-lg rounded-xl text-center">
           <h1 className="text-3xl font-extrabold text-indigo-700 flex items-center justify-center">
             <DollarSign className="w-8 h-8 mr-2 text-indigo-500" />
-            Investment Manager
+            HomeFlow
           </h1>
           <p className="text-sm text-gray-500 mt-1">Bienvenido, {userName}</p>
         </header>

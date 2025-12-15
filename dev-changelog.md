@@ -2,9 +2,11 @@
 
 Este archivo registra todos los cambios realizados en la etapa de desarrollo inicial. No se sube al repositorio (agregado en .gitignore).
 
----
 
-**[2025-12-05] Creación del archivo de seguimiento de cambios**
+- Se renombró la aplicación de "Investment Manager" a **HomeFlow** para reflejar el scope ampliado: control tanto de inversiones como de gastos del hogar.
+- Archivos actualizados: `index.html` (título), `src/App.jsx` (encabezado principal), `README.md` (nombre y descripción breve), `package.json` y `package-lock.json` (campo `name`).
+- Nota: las configuraciones y IDs de Firebase (`investment-manager-e47b6`) se mantienen sin cambios para evitar romper integraciones existentes.
+
 - Se crea `dev-changelog.md` para registrar cada ajuste relevante.
 - Se acordó registrar fecha, descripción, archivos afectados y estado anterior/nuevo si aplica.
 - Se agregará a `.gitignore`.

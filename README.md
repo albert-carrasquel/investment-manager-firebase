@@ -1,6 +1,8 @@
-# React + Vite
+# HomeFlow
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+HomeFlow is a small app to track household expenses and investments in one place. It provides a lightweight UI to add transactions (investments and expenses), query them by day/week/month/year, and generate simple reports per user or in aggregate.
+
+This project uses React + Vite and includes ESLint and Tailwind for styling.
 
 Currently, two official plugins are available:
 
