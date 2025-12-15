@@ -27,3 +27,9 @@ export const sanitizeActivo = (value) =>
 
 export const sanitizeNombre = (value) =>
   String(value).replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '').toUpperCase().slice(0, 50);
+
+export const getUniqueActivos = (transactions = [], usuarioId) => {
+  const filtered = transactions.filter((t) => t && t.activo && (usuarioId ? t.usuarioId === usuarioId : true));
+  const setActivos = new Set(filtered.map((t) => String(t.activo).toUpperCase()).filter(Boolean));
+  return Array.from(setActivos).sort();
+};

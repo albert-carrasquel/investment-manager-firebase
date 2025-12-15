@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 import { DollarSign } from 'lucide-react';
 import ConfirmationModal from './components/ConfirmationModal';
-import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre } from './utils/formatters';
+import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre, getUniqueActivos } from './utils/formatters';
 
 // --- CONFIGURACIÓN GLOBAL ---
 
@@ -145,9 +145,11 @@ const App = () => {
   // isAuthReady indica que el intento inicial de autenticación ha finalizado
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [_transactions, setTransactions] = useState([]);
+  const [activosList, setActivosList] = useState([]);
   const [newTransaction, setNewTransaction] = useState({
     tipoOperacion: 'compra', // 'compra' o 'venta'
     activo: '',
+    usuarioId: '',
     nombreActivo: '',
     tipoActivo: '',
     cantidad: '',
@@ -258,6 +260,16 @@ const App = () => {
     return () => unsubscribe();
   }, [db, userId, isAuthReady]);
 
+  // Build a unique list of activos (optionally filtered by usuarioId from the form)
+  useEffect(() => {
+    // use helper to compute unique activos (optionally filtered by usuarioId)
+    const list = getUniqueActivos(_transactions, newTransaction.usuarioId);
+    setActivosList(list);
+    if (newTransaction.activo && !list.includes(newTransaction.activo.toUpperCase())) {
+      setNewTransaction((prev) => ({ ...prev, activo: '' }));
+    }
+  }, [_transactions, newTransaction.usuarioId]);
+
   // (Metrics and super-admin derivation are simplified/disabled for now)
 
   // Manejo de inputs del formulario
@@ -338,6 +350,12 @@ const App = () => {
     if (!newTransaction.fechaTransaccion) {
       errors.fechaTransaccion = 'Debes indicar la fecha de la transacción.';
     }
+    // Usuario: requerido (selección en el formulario)
+    if (!newTransaction.usuarioId) {
+      errors.usuarioId = 'Selecciona un usuario.';
+    } else if (!USER_NAMES[newTransaction.usuarioId]) {
+      errors.usuarioId = 'Selecciona un usuario válido.';
+    }
     // Total acorde al recibo (obligatorio, solo números)
     if (!/^\d+(\.\d+)?$/.test(newTransaction.totalOperacion) || parseFloat(newTransaction.totalOperacion) <= 0) {
       errors.totalOperacion = 'El "Total (según recibo)" debe ser un número positivo.';
@@ -345,6 +363,14 @@ const App = () => {
     // Comisión (opcional) validación numérica
     if (newTransaction.comision && !/^\d+(\.\d+)?$/.test(newTransaction.comision)) {
       errors.comision = 'La "Comisión" debe ser un número válido.';
+    }
+    // Venta-specific validation: ensure there are activos available to sell for the selected user
+    if (newTransaction.tipoOperacion === 'venta') {
+      if (activosList.length === 0) {
+        errors.activo = 'No hay activos registrados para el usuario seleccionado. No es posible registrar ventas.';
+      } else if (!activosList.includes(assetSymbol)) {
+        errors.activo = 'El activo seleccionado no está disponible para venta para este usuario.';
+      }
     }
     // Exchange: requerido y validar opción
     const allowedExchanges = ['Invertir Online', 'Binance', 'BingX', 'Buenbit'];
@@ -362,6 +388,7 @@ const App = () => {
     // Normalizamos el activo antes de guardar
     const transactionToSave = {
       ...newTransaction,
+      tipoOperacion: newTransaction.tipoOperacion,
       activo: assetSymbol,
       nombreActivo: newTransaction.nombreActivo || '',
       tipoActivo: newTransaction.tipoActivo,
@@ -372,7 +399,7 @@ const App = () => {
       comision: newTransaction.comision ? parseFloat(newTransaction.comision) : null,
       // Guardar moneda de la comisión como null si está vacía (consistencia con `comision`)
       monedaComision: newTransaction.monedaComision ? newTransaction.monedaComision : null,
-      usuarioId: userId,
+      usuarioId: newTransaction.usuarioId || userId,
       timestamp: serverTimestamp(), // fecha real de creación (para ordenar)
       fechaTransaccion: new Date(`${newTransaction.fechaTransaccion}T00:00:00`), // fecha elegida (como Date)
       exchange: newTransaction.exchange || '',
@@ -387,6 +414,7 @@ const App = () => {
       setNewTransaction({
         tipoOperacion: 'compra',
         activo: '',
+        usuarioId: '',
         nombreActivo: '',
         tipoActivo: '',
         cantidad: '',
@@ -540,27 +568,70 @@ const App = () => {
 
           {/* Ahora mostramos errores inline por campo en lugar de un mensaje global */}
           <form onSubmit={handleAddTransaction} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tipo de Operación</label>
+                <div className="mt-1 flex items-center gap-4">
+                  <label className="inline-flex items-center gap-2">
+                    <input type="radio" name="tipoOperacion" value="compra" checked={newTransaction.tipoOperacion === 'compra'} onChange={handleInputChange} />
+                    <span>Compra</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input type="radio" name="tipoOperacion" value="venta" checked={newTransaction.tipoOperacion === 'venta'} onChange={handleInputChange} />
+                    <span>Venta</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="fechaTransaccion" className="block text-sm font-medium text-gray-700">Fecha de la transacción</label>
+                <input id="fechaTransaccion" name="fechaTransaccion" type="date" required value={newTransaction.fechaTransaccion || ''} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                {fieldErrors.fechaTransaccion && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.fechaTransaccion}</p>
+                )}
+              </div>
+            </div>
             <div>
-              <label htmlFor="fechaTransaccion" className="block text-sm font-medium text-gray-700">Fecha de la transacción</label>
-              <input id="fechaTransaccion" name="fechaTransaccion" type="date" required value={newTransaction.fechaTransaccion || ''} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-              {fieldErrors.fechaTransaccion && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.fechaTransaccion}</p>
+              <label htmlFor="usuarioId" className="block text-sm font-medium text-gray-700">Usuario</label>
+              <select id="usuarioId" name="usuarioId" value={newTransaction.usuarioId} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="" disabled>Selecciona usuario...</option>
+                {Object.entries(USER_NAMES).map(([uid, name]) => (
+                  <option key={uid} value={uid}>{name.split(' ')[0]}</option>
+                ))}
+              </select>
+              {fieldErrors.usuarioId && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.usuarioId}</p>
+              )}
+              {newTransaction.tipoOperacion === 'venta' && !newTransaction.usuarioId && (
+                <p className="mt-2 text-sm text-gray-500">Selecciona un usuario para ver los activos disponibles para venta.</p>
               )}
             </div>
             <div>
               <label htmlFor="activo" className="block text-sm font-medium text-gray-700">Símbolo del Activo</label>
-              <input id="activo" name="activo" type="text" required placeholder="Ej: BTC, INTC" value={newTransaction.activo} onChange={handleInputChange} onPaste={(e) => {
-                const text = (e.clipboardData || window.clipboardData).getData('text') || '';
-                const cleaned = sanitizeActivo(text);
-                if (!cleaned) e.preventDefault();
-                else {
-                  e.preventDefault();
-                  setNewTransaction(prev => ({ ...prev, activo: cleaned }));
-                  setFieldErrors(prev => ({ ...prev, activo: null }));
-                }
-              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              <select
+                id="activo"
+                name="activo"
+                value={newTransaction.activo}
+                onChange={handleInputChange}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                disabled={newTransaction.tipoOperacion === 'venta' && activosList.length === 0}
+              >
+                {activosList.length === 0 ? (
+                  <option value="" disabled>No hay activos registrados</option>
+                ) : (
+                  <>
+                    <option value="" disabled>Selecciona símbolo...</option>
+                    {activosList.map((sym) => (
+                      <option key={sym} value={sym}>{sym}</option>
+                    ))}
+                  </>
+                )}
+              </select>
               {fieldErrors.activo && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.activo}</p>
+              )}
+              {newTransaction.tipoOperacion === 'venta' && activosList.length === 0 && (
+                <p className="mt-2 text-sm text-yellow-700">No hay activos registrados para el usuario seleccionado. No es posible registrar ventas.</p>
               )}
             </div>
             <div>
@@ -698,7 +769,11 @@ const App = () => {
               <label htmlFor="notas" className="block text-sm font-medium text-gray-700">Notas (opcional)</label>
               <textarea id="notas" name="notas" rows={2} placeholder="Observaciones, detalles..." value={newTransaction.notas} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
             </div>
-            <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">Agregar Transacción</button>
+            <button
+              type="submit"
+              disabled={newTransaction.tipoOperacion === 'venta' && activosList.length === 0}
+              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out ${newTransaction.tipoOperacion === 'venta' && activosList.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >Agregar Transacción</button>
           </form>
         </div>
       </div>

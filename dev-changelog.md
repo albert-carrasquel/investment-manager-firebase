@@ -225,3 +225,11 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 - Se cambió la etiqueta del campo `activo` a **"Símbolo del Activo"** para mayor claridad.
 - `nombreActivo` ahora se normaliza a mayúsculas durante la entrada (`sanitizeNombre` convierte el texto a `toUpperCase()`), de forma que lo que escribe el usuario se transforma en mayúsculas automáticamente.
 - Motivación: consistencia visual y simplificar búsquedas/filtrado al normalizar nombre y símbolo.
+
+---
+
+**[2025-12-15] Inicio de soporte para VENTAS en el formulario de inversiones (work-in-progress)**
+- Se añadió selector `usuarioId` y radio `tipoOperacion` (compra/venta) en el formulario.
+- Se convirtió `activo` a `select` y se implementó la lógica para poblarlo dinámicamente desde las transacciones existentes (lista única, filtrada por `usuarioId` cuando corresponde).
+- Validaciones: bloqueo de envío para ventas cuando no hay activos disponibles para el usuario seleccionado, y verificación adicional de que el `activo` seleccionado pertenezca a la lista disponible.
+- Próximos pasos: completar validaciones específicas de ventas, pruebas y asegurar persistencia correcta (`tipoOperacion='venta'`, `usuarioId` seleccionado). 
