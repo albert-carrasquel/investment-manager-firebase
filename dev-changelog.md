@@ -233,3 +233,9 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 - Se convirtió `activo` a `select` y se implementó la lógica para poblarlo dinámicamente desde las transacciones existentes (lista única, filtrada por `usuarioId` cuando corresponde).
 - Validaciones: bloqueo de envío para ventas cuando no hay activos disponibles para el usuario seleccionado, y verificación adicional de que el `activo` seleccionado pertenezca a la lista disponible.
 - Próximos pasos: completar validaciones específicas de ventas, pruebas y asegurar persistencia correcta (`tipoOperacion='venta'`, `usuarioId` seleccionado). 
+
+---
+
+**[2025-12-15] Verificación manual: venta registrada en Firestore (verificado)**
+- Se verificó manualmente en Firebase que una operación de tipo **venta** fue registrada correctamente con los campos esperados (`tipoOperacion: 'venta'`, `usuarioId` seleccionado, `activo` en mayúsculas, `montoTotal`, `comision` como number/null cuando aplica). 
+- Estado: validación manual completada; trabajo en pausa por hoy. Próximo paso: instalar dependencias de test y ejecutar suite automatizada en la próxima sesión.
