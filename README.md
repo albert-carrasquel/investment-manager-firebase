@@ -2,6 +2,10 @@
 
 HomeFlow is a small app to track household expenses and investments in one place. It provides a lightweight UI to add transactions (investments and expenses), query them by day/week/month/year, and generate simple reports per user or in aggregate.
 
+Repositorio: https://github.com/albert-carrasquel/home-flow
+
+Estado: proyecto en desarrollo. Si quieres que añada badges de CI (por ejemplo GitHub Actions) puedo hacerlo una vez tengamos workflows públicos.
+
 This project uses React + Vite and includes ESLint and Tailwind for styling.
 
 Currently, two official plugins are available:
