@@ -165,6 +165,26 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 - Se añadieron ayudas de accesibilidad/UX: `inputMode="decimal"` en inputs numéricos y placeholders descriptivos.
 - La validación al enviar (`handleAddTransaction`) se mantiene como capa de seguridad adicional.
 
+---
+
+**[2025-12-15] Limpieza de código y extracción de utilidades (implementado)**
+- Se creó `src/utils/formatters.js` con utilidades reutilizables: `formatCurrency`, `sanitizeDecimal`, `sanitizeActivo`, `sanitizeNombre`.
+- Se eliminó código duplicado en `src/App.jsx` y se importa ahora desde `src/utils/formatters.js` (reducción de tamaño del componente y mejor reutilización).
+- Se removieron logs de depuración transitorios (p. ej. `console.log` del path de Firestore), y se ajustaron llamadas a `setState` dentro de efectos para evitar advertencias de React (actualizaciones diferidas cuando procede).
+- Se corrigieron múltiples advertencias de ESLint y se dejó `npm run lint` sin errores.
+
+---
+
+**[2025-12-15] Refactor: extracción de componentes (implementado)**
+- Se extrajeron componentes UI a archivos separados para facilitar pruebas y mantenimiento:
+  - `src/components/ConfirmationModal.jsx` (modal de confirmación de borrado)
+  - `src/components/MetricCard.jsx` (tarjeta de métrica)
+  - `src/components/TransactionItem.jsx` (elemento de la lista de transacciones)
+- `ConfirmationModal` ahora se importa y se usa en `src/App.jsx`; los demás componentes quedan disponibles para reutilización futura y testing.
+
+- Nota: `MetricCard` y `TransactionItem` fueron extraídos y quedan disponibles para uso/PRs futuros; no todos estaban activos en la UI actual pero su extracción simplifica añadir pruebas unitarias y reusar en futuras vistas.
+
+
 
 ---
 

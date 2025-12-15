@@ -18,13 +18,9 @@ import {
   deleteDoc,
   setLogLevel, // Importación de setLogLevel para depuración
 } from 'firebase/firestore';
-import {
-  DollarSign,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { DollarSign } from 'lucide-react';
+import ConfirmationModal from './components/ConfirmationModal';
+import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre } from './utils/formatters';
 
 // --- CONFIGURACIÓN GLOBAL ---
 
@@ -136,43 +132,12 @@ const LoginForm = ({ onLogin, error }) => {
   );
 };
 
-// Formato de moneda compartido (utilidad global dentro de este módulo)
-const formatCurrency = (amount, moneda = 'ARS') =>
-  new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: moneda,
-    minimumFractionDigits: 2,
-  }).format(amount);
 
 const App = () => {
   // Ref to detect IME composition (avoid sanitizing during composition)
   const compositionRef = useRef(false);
 
-  // --- Sanitizers (prevent invalid characters on input) ---
-  const sanitizeDecimal = (value, maxDecimals = 8) => {
-    if (!value && value !== '') return '';
-    // Allow comma as decimal separator (convert to dot)
-    let v = value.replace(',', '.');
-    // Remove everything except digits and dot
-    v = v.replace(/[^0-9.]/g, '');
-    // Only allow one dot
-    const parts = v.split('.');
-    if (parts.length > 2) {
-      v = parts.shift() + '.' + parts.join('');
-    }
-    // Limit decimals
-    if (parts[1]) {
-      parts[1] = parts[1].slice(0, maxDecimals);
-      v = parts[0] + '.' + parts[1];
-    }
-    return v;
-  };
-
-  // sanitizeInteger removed (not used). Use sanitizeDecimal where needed.
-
-  const sanitizeActivo = (value) => value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 10);
-
-  const sanitizeNombre = (value) => value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '').slice(0, 50);
+  // sanitizers and formatCurrency are provided by `src/utils/formatters.js`
 
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
@@ -256,9 +221,6 @@ const App = () => {
     if (!isAuthReady || !db || !userId) return;
 
     const transactionsPath = getTransactionsCollectionPath(appId);
-    console.log(
-      `Firestore Path being used for onSnapshot (App ID: ${appId}, User ID: ${userId}): ${transactionsPath}`,
-    );
 
     const q = query(collection(db, transactionsPath));
 
@@ -769,51 +731,11 @@ const App = () => {
       {contenido}
       {/* Modal de Confirmación */}
       {showConfirmModal && (
-        <ConfirmationModal
-          onConfirm={handleDeleteTransaction}
-          onCancel={handleCancelDelete}
-        />
+        <ConfirmationModal onConfirm={handleDeleteTransaction} onCancel={handleCancelDelete} />
       )}
     </>
   );
 };
-
-// Modal de confirmación
-const ConfirmationModal = ({ onConfirm, onCancel }) => (
-  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all">
-      <div className="flex justify-between items-start border-b pb-3 mb-4">
-        <h3 className="text-xl font-bold text-red-600">
-          Confirmar Eliminación
-        </h3>
-        <button
-          onClick={onCancel}
-          className="text-gray-400 hover:text-gray-600"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
-      <p className="text-gray-700 mb-6">
-        ¿Estás seguro de que quieres eliminar esta transacción? Esta acción no
-        se puede deshacer.
-      </p>
-      <div className="flex justify-end space-x-3">
-        <button
-          onClick={onCancel}
-          className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={onConfirm}
-          className="py-2 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition"
-        >
-          Eliminar
-        </button>
-      </div>
-    </div>
-  </div>
-);
 
 // Tarjeta de métrica
 const MetricCard = ({ title, amount, icon, color, moneda }) => {
@@ -846,53 +768,7 @@ const MetricCard = ({ title, amount, icon, color, moneda }) => {
   );
 };
 
-// Item de transacción
-const TransactionItem = ({ transaction, onDelete }) => {
-  const isCompra = transaction.tipoOperacion === 'compra';
-  const typeClass = isCompra ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
-  const Icon = isCompra ? ArrowUpRight : ArrowDownLeft;
-  const sourceDate = transaction.fechaTransaccion || transaction.fecha;
-  const formattedDate = sourceDate instanceof Date
-    ? sourceDate.toLocaleDateString('es-AR', { year: 'numeric', month: 'short', day: 'numeric' })
-    : 'Cargando fecha...';
-  const userName = USER_NAMES[transaction.usuarioId] || 'Usuario';
-  const token = (transaction.activo || '').toUpperCase();
-  const moneda = transaction.moneda || 'ARS';
-
-  return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition duration-150 ease-in-out">
-      <div className="flex items-center space-x-3 min-w-0">
-        <div className={`p-2 rounded-full ${typeClass}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="font-semibold text-gray-800 truncate">
-            {transaction.nombreActivo || token}
-          </p>
-          <p className="text-xs text-gray-500">{formattedDate}</p>
-          <p className="text-xs text-indigo-700 font-bold">Token: {token}</p>
-          <p className="text-xs text-gray-700">Usuario: {userName}</p>
-          <p className="text-xs text-gray-700">Tipo: {isCompra ? 'Compra' : 'Venta'}</p>
-          <p className="text-xs text-gray-700">Cantidad: {transaction.cantidad}</p>
-          <p className="text-xs text-gray-700">Precio Unitario: {formatCurrency(transaction.precioUnitario, moneda)}</p>
-          <p className="text-xs text-gray-700">Moneda: {moneda}</p>
-        </div>
-      </div>
-      <div className="flex items-center space-x-3 mt-2 md:mt-0">
-        <p className={`font-bold text-lg ${isCompra ? 'text-green-600' : 'text-red-600'}`}>
-          {formatCurrency(transaction.montoTotal || 0, moneda)}
-        </p>
-        <button
-          onClick={() => onDelete(transaction.id)}
-          className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition duration-150"
-          title="Eliminar Transacción"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
+// TransactionItem was extracted to `src/components/TransactionItem.jsx` for reuse and testing.
 
 // Radio option
 const RadioOption = ({ id, name, value, checked, onChange, label }) => (
