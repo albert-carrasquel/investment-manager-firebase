@@ -6,6 +6,8 @@ Repositorio: https://github.com/albert-carrasquel/home-flow
 
 Estado: proyecto en desarrollo. Si quieres que añada badges de CI (por ejemplo GitHub Actions) puedo hacerlo una vez tengamos workflows públicos.
 
+Nota: Se está implementando soporte para operaciones de **VENTA** en la pestaña de Inversiones (selección de usuario, listado de activos disponibles por usuario y validaciones adicionales). Estado: Work-in-progress.
+
 This project uses React + Vite and includes ESLint and Tailwind for styling.
 
 Currently, two official plugins are available:
