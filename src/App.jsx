@@ -284,42 +284,53 @@ const App = () => {
     if (!isAuthReady || !db) return;
 
     const cashflowPath = getCashflowCollectionPath(appId);
-    const q = query(collection(db, cashflowPath), orderBy('timestamp', 'desc'), limit(5));
 
-    const unsubscribe = onSnapshot(
-      q,
-      async (snapshot) => {
-        const fetched = [];
-        snapshot.forEach((docSnap) => {
+    // Helper to fetch merged last-5 by timestamp and fallback to fecha
+    const refreshCashflows = async () => {
+      try {
+        const byTimestampQ = query(collection(db, cashflowPath), orderBy('timestamp', 'desc'), limit(5));
+        const snap1 = await getDocs(byTimestampQ);
+        const items = [];
+        const ids = new Set();
+        snap1.forEach((docSnap) => {
           const data = docSnap.data();
-          fetched.push({ id: docSnap.id, ...data, timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date() });
+          const ts = data.timestamp && data.timestamp.toDate ? data.timestamp.toDate() : (data.fecha && data.fecha.toDate ? data.fecha.toDate() : new Date());
+          items.push({ id: docSnap.id, ...data, timestamp: ts });
+          ids.add(docSnap.id);
         });
 
-        // If there are no results (e.g., older records only have `fecha` but not `timestamp`),
-        // fallback to fetch by `fecha` so existing docs appear in the 'Últimos 5'.
-        if (fetched.length === 0) {
-          try {
-            const fallbackQ = query(collection(db, cashflowPath), orderBy('fecha', 'desc'), limit(5));
-            const fallbackSnap = await getDocs(fallbackQ);
-            const fallback = [];
-            fallbackSnap.forEach((docSnap) => {
-              const data = docSnap.data();
-              fallback.push({ id: docSnap.id, ...data, timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.fecha?.toDate ? data.fecha.toDate() : new Date()) });
-            });
-            setCashflows(fallback);
-            return;
-          } catch (e) {
-            console.error('Error fetching fallback cashflow by fecha:', e);
-          }
+        if (items.length < 5) {
+          // supplement with items ordered by fecha (descending)
+          const byFechaQ = query(collection(db, cashflowPath), orderBy('fecha', 'desc'), limit(10));
+          const snap2 = await getDocs(byFechaQ);
+          snap2.forEach((docSnap) => {
+            if (ids.has(docSnap.id)) return;
+            const data = docSnap.data();
+            const ts = data.timestamp && data.timestamp.toDate ? data.timestamp.toDate() : (data.fecha && data.fecha.toDate ? data.fecha.toDate() : new Date());
+            items.push({ id: docSnap.id, ...data, timestamp: ts });
+            ids.add(docSnap.id);
+          });
         }
 
-        setCashflows(fetched);
-      },
-      (err) => {
-        console.error('Error fetching cashflow:', err);
+        // Sort merged items by timestamp desc and keep only 5
+        items.sort((a, b) => b.timestamp - a.timestamp);
+        setCashflows(items.slice(0, 5));
+      } catch (e) {
+        console.error('Error refreshing cashflows:', e);
         setError('Error fetching cashflow: Problema de red o configuración.');
-      },
-    );
+      }
+    };
+
+    // Initial fetch
+    refreshCashflows();
+
+    // Listen for changes (using timestamp ordering) and refresh list on updates
+    const listenQ = query(collection(db, cashflowPath), orderBy('timestamp', 'desc'), limit(20));
+    const unsubscribe = onSnapshot(listenQ, () => {
+      refreshCashflows().catch((e) => console.error('Error refreshing on snapshot:', e));
+    }, (err) => {
+      console.error('Error in cashflow subscription:', err);
+    });
 
     return () => unsubscribe();
   }, [db, isAuthReady]);

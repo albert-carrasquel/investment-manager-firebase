@@ -256,3 +256,10 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 - Validación: `usuarioId` ahora es obligatorio y se valida que sea un usuario conocido.
 - Persistencia: el documento guarda `usuarioId` seleccionado; si por algún motivo no se selecciona, se mantiene la compatibilidad y se usa `userId` o `dev-albert` como fallback.
 - Visual: la lista de últimos 5 ahora muestra el nombre corto (primer nombre) del usuario asociado a cada registro.
+
+---
+
+**[2025-12-16] Fix: siempre mostrar los últimos 5 movimientos en Gastos/Ingresos**
+- Se corrigió la dependencia en el `useEffect` de cashflows para que **siempre** obtenga y muestre los últimos 5 registros (anulados o no) al iniciar la app o al realizar cualquier cambio en la colección, independientemente del `tab` seleccionado.
+- Ahora la lista de últimos 5 se mantiene actualizada en tiempo real y no se limita a una pestaña específica; al entrar en "Gastos", siempre verás los últimos 5 movimientos para evitar registros duplicados.
+- Archivos modificados: `src/App.jsx` (removido `tab !== 'gastos'` de la condición del effect).
