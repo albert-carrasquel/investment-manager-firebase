@@ -115,25 +115,57 @@
 /* Feature cards for home screen */
 .hf-features-grid {
   display: flex;
-  flex-direction: column;
-  gap: var(--hf-space-lg);
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-top: var(--hf-space-2xl);
-  max-width: 500px;
+  max-width: 1000px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .hf-features-grid .hf-button {
+  min-width: 220px;
+  max-width: 280px;
+  width: auto;
   padding: 1rem 1.5rem;
   font-size: 1.125rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--hf-space-md);
+  border-radius: var(--hf-radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), var(--hf-glow-cyan);
+  transition: all var(--hf-transition-base);
+}
+
+.hf-features-grid .hf-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(68, 241, 224, 0.4), var(--hf-glow-cyan);
+  filter: brightness(1.1);
+}
+
+.hf-features-grid .hf-button:active {
+  transform: translateY(-1px);
 }
 
 .hf-feature-icon {
   font-size: 1.5rem;
+}
+
+/* Mobile: botones apilados verticalmente */
+@media (max-width: 899px) {
+  .hf-features-grid {
+    flex-direction: column;
+    max-width: 500px;
+  }
+  
+  .hf-features-grid .hf-button {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 /* Section headers with icons */
