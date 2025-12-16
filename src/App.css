@@ -115,28 +115,32 @@
 /* Feature cards for home screen */
 .hf-features-grid {
   display: flex;
-  flex-direction: column;        /* ← SIEMPRE columna vertical */
-  align-items: center;
-  gap: 1rem;
-  margin-top: var(--hf-space-2xl);
-  max-width: 500px;              /* ← Ancho contenido para botones verticales */
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.5rem;
+  max-width: 450px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .hf-features-grid .hf-button {
-  width: 100%;                   /* ← Botones ocupan ancho completo */
-  max-width: 400px;              /* ← Límite razonable */
-  padding: 1rem 1.5rem;
-  font-size: 1.125rem;
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
   justify-content: center;
   gap: var(--hf-space-md);
+  width: 100%;
+  min-height: 70px;
+  padding: 1rem 1.5rem;
+  font-size: 1.125rem;
+  white-space: nowrap;
   border-radius: var(--hf-radius-lg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), var(--hf-glow-cyan);
   transition: all var(--hf-transition-base);
+}
+
+.hf-feature-icon {
+  flex-shrink: 0;
 }
 
 .hf-features-grid .hf-button:hover {
