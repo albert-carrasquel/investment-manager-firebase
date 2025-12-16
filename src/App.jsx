@@ -90,22 +90,22 @@ const LoginForm = ({ onLogin, error }) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
-        <h2 className="text-2xl font-bold mb-6 text-indigo-700 text-center">
+    <div className="hf-login-container">
+      <div className="hf-card hf-login-card">
+        <h2 className="text-2xl font-bold mb-6 hf-text-gradient text-center">
           Iniciar Sesión
         </h2>
         {error && (
-          <div className="mb-4 text-red-700 text-sm">{error}</div>
+          <div className="hf-alert hf-alert-error hf-mb-md">{error}</div>
         )}
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleEmailLogin} className="hf-form">
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="hf-input"
           />
           <input
             type="password"
@@ -113,25 +113,30 @@ const LoginForm = ({ onLogin, error }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="hf-input"
           />
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
+            className="hf-button hf-button-primary w-full"
           >
-            {loading ? 'Ingresando...' : 'Ingresar'}
+            {loading ? (
+              <span className="hf-flex hf-gap-sm" style={{alignItems: 'center', justifyContent: 'center'}}>
+                <span className="hf-loading"></span>
+                <span>Ingresando...</span>
+              </span>
+            ) : 'Ingresar'}
           </button>
         </form>
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => onLogin({ google: true })}
-            className="w-full py-2 px-4 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition"
-          >
-            Ingresar con Google
-          </button>
-        </div>
+        <div className="hf-divider"></div>
+        <button
+          type="button"
+          onClick={() => onLogin({ google: true })}
+          className="hf-button hf-button-secondary w-full"
+          style={{background: '#EA4335', color: 'white', border: 'none'}}
+        >
+          Ingresar con Google
+        </button>
       </div>
     </div>
   );
@@ -848,106 +853,125 @@ const App = () => {
 
   if (isLoading) {
     contenido = (
-      <div className="flex justify-center items-center h-screen bg-gray-50">
-        <div className="text-xl font-medium text-gray-700">
-          Cargando aplicación...
+      <div className="hf-flex-center" style={{minHeight: '100vh'}}>
+        <div className="hf-card hf-text-center">
+          <div className="hf-loading" style={{width: '40px', height: '40px', margin: '0 auto 1rem'}}></div>
+          <p className="text-xl">Cargando aplicación...</p>
         </div>
       </div>
     );
   } else if (error) {
     contenido = (
-      <div className="p-8 bg-red-100 border border-red-400 text-red-700 rounded-lg max-w-lg mx-auto mt-10 shadow-xl">
-        <h2 className="text-2xl font-bold mb-4">Error de Configuración/Conexión</h2>
-        <p className="font-semibold mb-2">{error}</p>
+      <div className="hf-page hf-flex-center" style={{minHeight: '100vh'}}>
+        <div className="hf-card hf-alert-error" style={{maxWidth: '500px'}}>
+          <h2 className="text-2xl font-bold mb-4">Error de Configuración/Conexión</h2>
+          <p className="font-semibold mb-2">{error}</p>
+        </div>
       </div>
     );
   } else if (!DEV_BYPASS_AUTH && !isSuperAdmin && isAuthReady) {
     contenido = (
-      <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
-        <div className="p-8 bg-red-100 border border-red-400 text-red-700 rounded-lg max-w-lg mx-auto mt-10 shadow-xl">
+      <div className="hf-page hf-flex-center" style={{minHeight: '100vh'}}>
+        <div className="hf-card hf-alert-error" style={{maxWidth: '500px'}}>
           <h2 className="text-2xl font-bold mb-4">Acceso Denegado</h2>
         </div>
       </div>
     );
   } else if (!tab) {
     contenido = (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center font-sans antialiased">
-        <header className="mb-8 p-4 bg-white shadow-lg rounded-xl text-center">
-          <h1 className="text-3xl font-extrabold text-indigo-700 flex items-center justify-center">
-            <DollarSign className="w-8 h-8 mr-2 text-indigo-500" />
+      <div className="hf-welcome">
+        <div className="hf-card hf-welcome-card hf-text-center">
+          <h1 className="hf-text-gradient">
+            <DollarSign className="w-12 h-12 inline-block mr-2" style={{filter: 'drop-shadow(0 0 20px rgba(68, 241, 224, 0.4))'}} />
             HomeFlow
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Bienvenido, {userName}</p>
-        </header>
-        <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8 flex flex-col gap-6">
-          <h2 className="text-xl font-bold text-indigo-700 text-center mb-4">¿Qué sección deseas consultar?</h2>
-          <button className="w-full py-3 rounded-lg bg-indigo-600 text-white font-bold text-lg hover:bg-indigo-700 transition" onClick={() => setTab('inversiones')}>Inversiones</button>
-          <button className="w-full py-3 rounded-lg bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition" onClick={() => setTab('gastos')}>Gastos Mensuales</button>
-          <button className="w-full py-3 rounded-lg bg-gray-600 text-white font-bold text-lg hover:bg-gray-700 transition" onClick={() => setTab('reportes')}>Reportes</button>
+          <p className="hf-welcome p">Bienvenido, {userName}</p>
+          
+          <div className="hf-divider"></div>
+          
+          <h2 className="text-xl font-bold mb-6">¿Qué sección deseas consultar?</h2>
+          
+          <div className="hf-features-grid">
+            <div className="hf-feature-card" onClick={() => setTab('inversiones')}>
+              <div className="hf-feature-icon">📈</div>
+              <h3 className="hf-feature-title">Inversiones</h3>
+              <p className="hf-feature-description">Gestiona tus operaciones de compra y venta</p>
+            </div>
+            <div className="hf-feature-card" onClick={() => setTab('gastos')}>
+              <div className="hf-feature-icon">💰</div>
+              <h3 className="hf-feature-title">Gastos Mensuales</h3>
+              <p className="hf-feature-description">Controla ingresos y gastos del hogar</p>
+            </div>
+            <div className="hf-feature-card" onClick={() => setTab('reportes')}>
+              <div className="hf-feature-icon">📊</div>
+              <h3 className="hf-feature-title">Reportes</h3>
+              <p className="hf-feature-description">Consulta y analiza tus movimientos</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   } else if (tab === 'inversiones') {
     contenido = (
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans antialiased">
-        <header className="mb-8 p-4 bg-white shadow-lg rounded-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <DollarSign className="w-10 h-10 text-indigo-600" />
-            <h1 className="text-3xl font-extrabold text-indigo-700">Inversiones</h1>
+      <div className="hf-page">
+        <div className="hf-header">
+          <div className="hf-flex hf-gap-md" style={{alignItems: 'center'}}>
+            <DollarSign className="w-10 h-10" style={{color: 'var(--hf-accent-cyan)'}} />
+            <h2>Inversiones</h2>
           </div>
-          <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" alt="Inversiones" className="rounded-xl shadow-lg w-32 h-32 object-cover hidden md:block" />
-          <button className="px-4 py-2 rounded-lg bg-gray-200 text-indigo-700 font-bold hover:bg-gray-300" onClick={() => setTab('')}>Volver</button>
-        </header>
-        <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-2xl font-bold mb-6 text-indigo-700 text-center">Agregar nueva transacción</h2>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('')}>Volver</button>
+        </div>
+        
+        <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
+          <h2 className="text-2xl font-bold mb-6 hf-text-gradient text-center">Agregar nueva transacción</h2>
 
           {successMessage && (
-            <div className="p-3 mb-4 text-sm text-green-800 bg-green-100 rounded-lg">
+            <div className="hf-alert hf-alert-success">
               {successMessage}
             </div>
           )}
 
           {/* Ahora mostramos errores inline por campo en lugar de un mensaje global */}
-          <form onSubmit={handleAddTransaction} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo de Operación</label>
-                <div className="mt-1 flex items-center gap-4">
-                  <label className="inline-flex items-center gap-2">
+          <form onSubmit={handleAddTransaction} className="hf-form">
+            <div className="hf-grid-2">
+              <div className="hf-field">
+                <label className="block text-sm font-medium">Tipo de Operación</label>
+                <div className="hf-radio-group">
+                  <label className="hf-radio-label">
                     <input type="radio" name="tipoOperacion" value="compra" checked={newTransaction.tipoOperacion === 'compra'} onChange={handleInputChange} />
                     <span>Compra</span>
                   </label>
-                  <label className="inline-flex items-center gap-2">
+                  <label className="hf-radio-label">
                     <input type="radio" name="tipoOperacion" value="venta" checked={newTransaction.tipoOperacion === 'venta'} onChange={handleInputChange} />
                     <span>Venta</span>
                   </label>
                 </div>
               </div>
-              <div>
-                <label htmlFor="fechaTransaccion" className="block text-sm font-medium text-gray-700">Fecha de la transacción</label>
-                <input id="fechaTransaccion" name="fechaTransaccion" type="date" required value={newTransaction.fechaTransaccion || ''} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              <div className="hf-field">
+                <label htmlFor="fechaTransaccion">Fecha de la transacción</label>
+                <input id="fechaTransaccion" name="fechaTransaccion" type="date" required value={newTransaction.fechaTransaccion || ''} onChange={handleInputChange} className="hf-input" />
                 {fieldErrors.fechaTransaccion && (
-                  <p className="mt-1 text-sm text-red-600">{fieldErrors.fechaTransaccion}</p>
+                  <p className="hf-field-error">{fieldErrors.fechaTransaccion}</p>
                 )}
               </div>
             </div>
-            <div>
-              <label htmlFor="usuarioId" className="block text-sm font-medium text-gray-700">Usuario</label>
-              <select id="usuarioId" name="usuarioId" value={newTransaction.usuarioId} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <div className="hf-field">
+              <label htmlFor="usuarioId">Usuario</label>
+              <select id="usuarioId" name="usuarioId" value={newTransaction.usuarioId} onChange={handleInputChange} required className="hf-select">
                 <option value="" disabled>Selecciona usuario...</option>
                 {Object.entries(USER_NAMES).map(([uid, name]) => (
                   <option key={uid} value={uid}>{name.split(' ')[0]}</option>
                 ))}
               </select>
               {fieldErrors.usuarioId && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.usuarioId}</p>
+                <p className="hf-field-error">{fieldErrors.usuarioId}</p>
               )}
               {newTransaction.tipoOperacion === 'venta' && !newTransaction.usuarioId && (
-                <p className="mt-2 text-sm text-gray-500">Selecciona un usuario para ver los activos disponibles para venta.</p>
+                <p className="text-sm" style={{color: 'var(--hf-text-muted)', marginTop: '0.5rem'}}>Selecciona un usuario para ver los activos disponibles para venta.</p>
               )}
             </div>
-            <div>
-              <label htmlFor="activo" className="block text-sm font-medium text-gray-700">Símbolo del Activo</label>
+            <div className="hf-field">
+              <label htmlFor="activo">Símbolo del Activo</label>
               {newTransaction.tipoOperacion === 'compra' ? (
                 <input
                   id="activo"
@@ -972,7 +996,7 @@ const App = () => {
                   }}
                   required
                   maxLength={10}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 uppercase"
+                  className="hf-input uppercase"
                 />
               ) : (
                 <select
@@ -981,7 +1005,7 @@ const App = () => {
                   value={newTransaction.activo}
                   onChange={handleInputChange}
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="hf-select"
                   disabled={activosList.length === 0}
                 >
                   {activosList.length === 0 ? (
@@ -997,14 +1021,14 @@ const App = () => {
                 </select>
               )}
               {fieldErrors.activo && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.activo}</p>
+                <p className="hf-field-error">{fieldErrors.activo}</p>
               )}
               {newTransaction.tipoOperacion === 'venta' && activosList.length === 0 && (
-                <p className="mt-2 text-sm text-yellow-700">No hay activos registrados para el usuario seleccionado. No es posible registrar ventas.</p>
+                <p className="hf-alert hf-alert-warning" style={{fontSize: '0.875rem', padding: '0.5rem', marginTop: '0.5rem'}}>No hay activos registrados para el usuario seleccionado. No es posible registrar ventas.</p>
               )}
             </div>
-            <div>
-              <label htmlFor="nombreActivo" className="block text-sm font-medium text-gray-700">Nombre del Activo</label>
+            <div className="hf-field">
+              <label htmlFor="nombreActivo">Nombre del Activo</label>
               <input id="nombreActivo" name="nombreActivo" type="text" placeholder="Ej: Bitcoin" value={newTransaction.nombreActivo} onChange={handleInputChange} onPaste={(e) => {
                 const text = (e.clipboardData || window.clipboardData).getData('text') || '';
                 const cleaned = sanitizeNombre(text);
@@ -1014,14 +1038,14 @@ const App = () => {
                   setNewTransaction(prev => ({ ...prev, nombreActivo: cleaned }));
                   setFieldErrors(prev => ({ ...prev, nombreActivo: null }));
                 }
-              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="hf-input" />
               {fieldErrors.nombreActivo && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.nombreActivo}</p>
+                <p className="hf-field-error">{fieldErrors.nombreActivo}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="tipoActivo" className="block text-sm font-medium text-gray-700">Tipo de Activo</label>
-              <select id="tipoActivo" name="tipoActivo" value={newTransaction.tipoActivo} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <div className="hf-field">
+              <label htmlFor="tipoActivo">Tipo de Activo</label>
+              <select id="tipoActivo" name="tipoActivo" value={newTransaction.tipoActivo} onChange={handleInputChange} required className="hf-select">
                 <option value="" disabled>Selecciona tipo de activo...</option>
                 <option value="Cripto">Cripto</option>
                 <option value="Acciones">Acciones</option>
@@ -1031,22 +1055,22 @@ const App = () => {
                 <option value="Bono">Bono</option>
               </select>
               {fieldErrors.tipoActivo && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.tipoActivo}</p>
+                <p className="hf-field-error">{fieldErrors.tipoActivo}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="moneda" className="block text-sm font-medium text-gray-700">Moneda</label>
-              <select id="moneda" name="moneda" required value={newTransaction.moneda} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <div className="hf-field">
+              <label htmlFor="moneda">Moneda</label>
+              <select id="moneda" name="moneda" required value={newTransaction.moneda} onChange={handleInputChange} className="hf-select">
                 <option value="" disabled>Selecciona moneda...</option>
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
               </select>
               {fieldErrors.moneda && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.moneda}</p>
+                <p className="hf-field-error">{fieldErrors.moneda}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="cantidad" className="block text-sm font-medium text-gray-700">Cantidad</label>
+            <div className="hf-field">
+              <label htmlFor="cantidad">Cantidad</label>
               <input id="cantidad" name="cantidad" type="text" inputMode="decimal" required placeholder="Ej: 0.5" value={newTransaction.cantidad} onChange={handleInputChange} onPaste={(e) => {
                 const text = (e.clipboardData || window.clipboardData).getData('text') || '';
                 const cleaned = sanitizeDecimal(text, 8);
@@ -1056,13 +1080,13 @@ const App = () => {
                   setNewTransaction(prev => ({ ...prev, cantidad: cleaned }));
                   setFieldErrors(prev => ({ ...prev, cantidad: null }));
                 }
-              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="hf-input" />
               {fieldErrors.cantidad && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.cantidad}</p>
+                <p className="hf-field-error">{fieldErrors.cantidad}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="precioUnitario" className="block text-sm font-medium text-gray-700">Precio Unitario</label>
+            <div className="hf-field">
+              <label htmlFor="precioUnitario">Precio Unitario</label>
               <input id="precioUnitario" name="precioUnitario" type="text" inputMode="decimal" required placeholder="Ej: 100.00" value={newTransaction.precioUnitario} onChange={handleInputChange} onPaste={(e) => {
                 const text = (e.clipboardData || window.clipboardData).getData('text') || '';
                 const cleaned = sanitizeDecimal(text, 8);
@@ -1072,13 +1096,13 @@ const App = () => {
                   setNewTransaction(prev => ({ ...prev, precioUnitario: cleaned }));
                   setFieldErrors(prev => ({ ...prev, precioUnitario: null }));
                 }
-              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="hf-input" />
               {fieldErrors.precioUnitario && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.precioUnitario}</p>
+                <p className="hf-field-error">{fieldErrors.precioUnitario}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="totalOperacion" className="block text-sm font-medium text-gray-700">Total {newTransaction.tipoOperacion === 'compra' ? 'Compra' : 'Venta'} (según recibo)</label>
+            <div className="hf-field">
+              <label htmlFor="totalOperacion">Total {newTransaction.tipoOperacion === 'compra' ? 'Compra' : 'Venta'} (según recibo)</label>
               <input id="totalOperacion" name="totalOperacion" type="text" inputMode="decimal" required step="any" min="0.01" placeholder="Ej: 1000.00" value={newTransaction.totalOperacion || ''} onChange={handleInputChange} onPaste={(e) => {
                 const text = (e.clipboardData || window.clipboardData).getData('text') || '';
                 const cleaned = sanitizeDecimal(text, 2);
@@ -1088,13 +1112,13 @@ const App = () => {
                   setNewTransaction(prev => ({ ...prev, totalOperacion: cleaned }));
                   setFieldErrors(prev => ({ ...prev, totalOperacion: null }));
                 }
-              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="hf-input" />
               {fieldErrors.totalOperacion && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.totalOperacion}</p>
+                <p className="hf-field-error">{fieldErrors.totalOperacion}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="comision" className="block text-sm font-medium text-gray-700">Comisión (opcional)</label>
+            <div className="hf-field">
+              <label htmlFor="comision">Comisión (opcional)</label>
               <input id="comision" name="comision" type="text" inputMode="decimal" step="any" min="0" placeholder="Ej: 1.5" value={newTransaction.comision} onChange={handleInputChange} onPaste={(e) => {
                 const text = (e.clipboardData || window.clipboardData).getData('text') || '';
                 const cleaned = sanitizeDecimal(text, 4);
@@ -1104,25 +1128,25 @@ const App = () => {
                   setNewTransaction(prev => ({ ...prev, comision: cleaned }));
                   setFieldErrors(prev => ({ ...prev, comision: null }));
                 }
-              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+              }} onCompositionStart={() => (compositionRef.current = true)} onCompositionEnd={(e) => { compositionRef.current = false; handleInputChange(e); }} className="hf-input" />
               {fieldErrors.comision && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.comision}</p>
+                <p className="hf-field-error">{fieldErrors.comision}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="monedaComision" className="block text-sm font-medium text-gray-700">Moneda Comisión (opcional)</label>
-              <select id="monedaComision" name="monedaComision" value={newTransaction.monedaComision} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <div className="hf-field">
+              <label htmlFor="monedaComision">Moneda Comisión (opcional)</label>
+              <select id="monedaComision" name="monedaComision" value={newTransaction.monedaComision} onChange={handleInputChange} className="hf-select">
                 <option value="" disabled>Selecciona moneda para la comisión...</option>
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
               </select>
               {fieldErrors.monedaComision && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.monedaComision}</p>
+                <p className="hf-field-error">{fieldErrors.monedaComision}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="exchange" className="block text-sm font-medium text-gray-700">Exchange</label>
-              <select id="exchange" name="exchange" value={newTransaction.exchange} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <div className="hf-field">
+              <label htmlFor="exchange">Exchange</label>
+              <select id="exchange" name="exchange" value={newTransaction.exchange} onChange={handleInputChange} required className="hf-select">
                 <option value="" disabled>Selecciona exchange...</option>
                 <option value="Invertir Online">Invertir Online</option>
                 <option value="Binance">Binance</option>
@@ -1130,18 +1154,19 @@ const App = () => {
                 <option value="Buenbit">Buenbit</option>
               </select>
               {fieldErrors.exchange && (
-                <p className="mt-1 text-sm text-red-600">{fieldErrors.exchange}</p>
+                <p className="hf-field-error">{fieldErrors.exchange}</p>
               )}
             </div>
             
-            <div>
-              <label htmlFor="notas" className="block text-sm font-medium text-gray-700">Notas (opcional)</label>
-              <textarea id="notas" name="notas" rows={2} placeholder="Observaciones, detalles..." value={newTransaction.notas} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+            <div className="hf-field">
+              <label htmlFor="notas">Notas (opcional)</label>
+              <textarea id="notas" name="notas" rows={3} placeholder="Observaciones, detalles..." value={newTransaction.notas} onChange={handleInputChange} className="hf-textarea" />
             </div>
             <button
               type="submit"
               disabled={newTransaction.tipoOperacion === 'venta' && activosList.length === 0}
-              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out ${newTransaction.tipoOperacion === 'venta' && activosList.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="hf-button hf-button-primary w-full"
+              style={{fontSize: '1.125rem', padding: '1rem'}}
             >Agregar Transacción</button>
           </form>
         </div>
@@ -1149,66 +1174,66 @@ const App = () => {
     );
   } else if (tab === 'gastos') {
     contenido = (
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans antialiased">
-        <header className="mb-8 p-4 bg-white shadow-lg rounded-xl flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-green-700 flex items-center">Gastos / Ingresos</h1>
-          <button className="px-4 py-2 rounded-lg bg-gray-200 text-green-700 font-bold hover:bg-gray-300" onClick={() => setTab('')}>Volver</button>
-        </header>
-        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-xl font-bold mb-4 text-green-700 text-center">Registrar Gasto / Ingreso</h2>
+      <div className="hf-page">
+        <div className="hf-header">
+          <h2>Gastos / Ingresos</h2>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('')}>Volver</button>
+        </div>
+        <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
+          <h2 className="text-xl font-bold mb-4 hf-text-gradient text-center">Registrar Gasto / Ingreso</h2>
 
           {successMessage && (
-            <div className="p-3 mb-4 text-sm text-green-800 bg-green-100 rounded-lg">
+            <div className="hf-alert hf-alert-success">
               {successMessage}
             </div>
           )}
 
-          <form onSubmit={handleAddCashflow} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo</label>
-                <select name="tipo" value={newCashflow.tipo} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+          <form onSubmit={handleAddCashflow} className="hf-form">
+            <div className="hf-grid-2">
+              <div className="hf-field">
+                <label>Tipo</label>
+                <select name="tipo" value={newCashflow.tipo} onChange={handleCashflowInputChange} required className="hf-select">
                   <option value="gasto">Gasto</option>
                   <option value="ingreso">Ingreso</option>
                 </select>
-                {cashflowFieldErrors.tipo && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.tipo}</p>}
+                {cashflowFieldErrors.tipo && <p className="hf-field-error">{cashflowFieldErrors.tipo}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Fecha</label>
-                <input name="fechaOperacion" value={newCashflow.fechaOperacion || ''} onChange={handleCashflowInputChange} type="date" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500" />
-                {cashflowFieldErrors.fechaOperacion && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.fechaOperacion}</p>}
+              <div className="hf-field">
+                <label>Fecha</label>
+                <input name="fechaOperacion" value={newCashflow.fechaOperacion || ''} onChange={handleCashflowInputChange} type="date" required className="hf-input" />
+                {cashflowFieldErrors.fechaOperacion && <p className="hf-field-error">{cashflowFieldErrors.fechaOperacion}</p>}
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Usuario</label>
-              <select name="usuarioId" value={newCashflow.usuarioId} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+            <div className="hf-field">
+              <label>Usuario</label>
+              <select name="usuarioId" value={newCashflow.usuarioId} onChange={handleCashflowInputChange} required className="hf-select">
                 <option value="" disabled>Selecciona usuario...</option>
                 {Object.entries(USER_NAMES).map(([uid, name]) => (
                   <option key={uid} value={uid}>{name.split(' ')[0]}</option>
                 ))}
               </select>
-              {cashflowFieldErrors.usuarioId && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.usuarioId}</p>}
+              {cashflowFieldErrors.usuarioId && <p className="hf-field-error">{cashflowFieldErrors.usuarioId}</p>}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Monto</label>
-                <input name="monto" value={newCashflow.monto} onChange={handleCashflowInputChange} inputMode="decimal" placeholder="Ej: 1000.00" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500" />
-                {cashflowFieldErrors.monto && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.monto}</p>}
+            <div className="hf-grid-3">
+              <div className="hf-field">
+                <label>Monto</label>
+                <input name="monto" value={newCashflow.monto} onChange={handleCashflowInputChange} inputMode="decimal" placeholder="Ej: 1000.00" className="hf-input" />
+                {cashflowFieldErrors.monto && <p className="hf-field-error">{cashflowFieldErrors.monto}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Moneda</label>
-                <select name="moneda" value={newCashflow.moneda} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+              <div className="hf-field">
+                <label>Moneda</label>
+                <select name="moneda" value={newCashflow.moneda} onChange={handleCashflowInputChange} required className="hf-select">
                   <option value="">Selecciona moneda...</option>
                   <option value="ARS">ARS</option>
                   <option value="USD">USD</option>
                 </select>
-                {cashflowFieldErrors.moneda && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.moneda}</p>}
+                {cashflowFieldErrors.moneda && <p className="hf-field-error">{cashflowFieldErrors.moneda}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Categoría</label>
-                <select name="categoria" value={newCashflow.categoria} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+              <div className="hf-field">
+                <label>Categoría</label>
+                <select name="categoria" value={newCashflow.categoria} onChange={handleCashflowInputChange} required className="hf-select">
                   <option value="">Selecciona categoría...</option>
                   <option value="Comida">Comida</option>
                   <option value="Servicios">Servicios</option>
@@ -1218,40 +1243,46 @@ const App = () => {
                   <option value="Sueldo">Sueldo</option>
                   <option value="Otros">Otros</option>
                 </select>
-                {cashflowFieldErrors.categoria && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.categoria}</p>}
+                {cashflowFieldErrors.categoria && <p className="hf-field-error">{cashflowFieldErrors.categoria}</p>}
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Descripción (opcional)</label>
-              <input name="descripcion" value={newCashflow.descripcion} onChange={handleCashflowInputChange} placeholder="Detalle breve..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500" />
+            <div className="hf-field">
+              <label>Descripción (opcional)</label>
+              <input name="descripcion" value={newCashflow.descripcion} onChange={handleCashflowInputChange} placeholder="Detalle breve..." className="hf-input" />
             </div>
 
-            <button type="submit" className="w-full py-2 px-4 rounded-xl shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">Guardar</button>
+            <button type="submit" className="hf-button hf-button-primary w-full" style={{fontSize: '1rem', padding: '0.875rem'}}>Guardar</button>
           </form>
 
-          <hr className="my-6" />
+          <div className="hf-divider"></div>
 
           <h3 className="text-lg font-semibold mb-3">Últimos 5 registros</h3>
-          <div className="space-y-3">
+          <div className="hf-list">
             {cashflows.length === 0 ? (
-              <div className="text-sm text-gray-500">No hay registros recientes.</div>
+              <div className="hf-empty-state">
+                <p>No hay registros recientes.</p>
+              </div>
             ) : (
               cashflows.map((c) => (
-                <div key={c.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-start justify-between">
+                <div key={c.id} className="hf-list-item hf-flex-between">
                   <div>
-                          <div className="text-sm text-gray-500">{c.tipo.toUpperCase()} • {c.categoria} • <span className="font-medium">{USER_NAMES[c.usuarioId] ? USER_NAMES[c.usuarioId].split(' ')[0] : 'Usuario'}</span></div>
+                    <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem'}}>
+                      <span className={`hf-badge ${c.tipo === 'gasto' ? 'hf-badge-error' : 'hf-badge-success'}`}>{c.tipo.toUpperCase()}</span>
+                      <span className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>{c.categoria}</span>
+                      <span className="text-sm font-medium" style={{color: 'var(--hf-accent-cyan)'}}>{USER_NAMES[c.usuarioId] ? USER_NAMES[c.usuarioId].split(' ')[0] : 'Usuario'}</span>
+                    </div>
                     <div className="font-bold text-lg">{formatCurrency(c.monto || 0, c.moneda || 'ARS')}</div>
-                    <div className="text-sm text-gray-500">{(c.fechaOperacion && c.fechaOperacion.toDate) ? c.fechaOperacion.toDate().toLocaleDateString() : (c.fechaOperacion ? new Date(c.fechaOperacion).toLocaleDateString() : '')}</div>
-                    {c.descripcion && <div className="text-sm text-gray-600 mt-1">{c.descripcion}</div>}
-                    {c.anulada && <div className="mt-2 inline-block text-sm font-semibold text-red-700">ANULADA</div>}
+                    <div className="text-sm" style={{color: 'var(--hf-text-muted)'}}>{(c.fechaOperacion && c.fechaOperacion.toDate) ? c.fechaOperacion.toDate().toLocaleDateString() : (c.fechaOperacion ? new Date(c.fechaOperacion).toLocaleDateString() : '')}</div>
+                    {c.descripcion && <div className="text-sm mt-1" style={{color: 'var(--hf-text-secondary)'}}>{c.descripcion}</div>}
+                    {c.anulada && <div className="mt-2"><span className="hf-badge hf-badge-warning">ANULADA</span></div>}
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="text-sm text-gray-400">{new Date(c.timestamp || Date.now()).toLocaleString()}</div>
+                  <div className="hf-flex" style={{flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem'}}>
+                    <div className="text-sm" style={{color: 'var(--hf-text-muted)'}}>{new Date(c.timestamp || Date.now()).toLocaleString()}</div>
                     {!c.anulada ? (
-                      <button onClick={() => _handleShowAnnulConfirm(c.id)} className="px-3 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">Anular</button>
+                      <button onClick={() => _handleShowAnnulConfirm(c.id)} className="hf-button hf-button-danger" style={{padding: '0.5rem 1rem', fontSize: '0.875rem'}}>Anular</button>
                     ) : (
-                      <button disabled className="px-3 py-1 rounded-lg bg-gray-300 text-gray-600 text-sm">Anulada</button>
+                      <button disabled className="hf-button" style={{padding: '0.5rem 1rem', fontSize: '0.875rem', opacity: 0.5}}>Anulada</button>
                     )}
                   </div>
                 </div>
@@ -1268,82 +1299,82 @@ const App = () => {
     );
   } else if (tab === 'reportes') {
     contenido = (
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans antialiased">
-        <header className="mb-8 p-4 bg-white shadow-lg rounded-xl flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-gray-700 flex items-center">Reportes</h1>
-          <button className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300" onClick={() => setTab('')}>Volver</button>
-        </header>
+      <div className="hf-page">
+        <div className="hf-header">
+          <h2>Reportes</h2>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('')}>Volver</button>
+        </div>
 
         {/* Filters panel */}
-        <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl p-8 mb-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-700">Filtros de consulta</h2>
-          <div className="space-y-4">
+        <div className="hf-card hf-mb-lg">
+          <h2 className="text-xl font-bold mb-4 hf-text-gradient">Filtros de consulta</h2>
+          <div className="hf-form">
             {/* General filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo de datos *</label>
-                <select name="tipoDatos" value={reportFilters.tipoDatos} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+            <div className="hf-grid-3">
+              <div className="hf-field">
+                <label>Tipo de datos *</label>
+                <select name="tipoDatos" value={reportFilters.tipoDatos} onChange={handleReportFilterChange} className="hf-select">
                   <option value="">Selecciona tipo...</option>
                   <option value="inversiones">Inversiones</option>
                   <option value="cashflow">Cashflow</option>
                 </select>
-                {reportErrors.tipoDatos && <p className="mt-1 text-sm text-red-600">{reportErrors.tipoDatos}</p>}
+                {reportErrors.tipoDatos && <p className="hf-field-error">{reportErrors.tipoDatos}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Usuario *</label>
-                <select name="usuario" value={reportFilters.usuario} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+              <div className="hf-field">
+                <label>Usuario *</label>
+                <select name="usuario" value={reportFilters.usuario} onChange={handleReportFilterChange} className="hf-select">
                   <option value="todos">Todos</option>
                   {Object.entries(USER_NAMES).map(([uid, name]) => (
                     <option key={uid} value={uid}>{name.split(' ')[0]}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="flex items-center mt-6">
-                  <input type="checkbox" name="incluirAnulados" checked={reportFilters.incluirAnulados} onChange={handleReportFilterChange} className="mr-2" />
-                  <span className="text-sm text-gray-700">Incluir anulados</span>
+              <div className="hf-field">
+                <label className="hf-checkbox-label" style={{marginTop: '1.5rem'}}>
+                  <input type="checkbox" name="incluirAnulados" checked={reportFilters.incluirAnulados} onChange={handleReportFilterChange} />
+                  <span>Incluir anulados</span>
                 </label>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Fecha Desde *</label>
-                <input type="date" name="fechaDesde" value={reportFilters.fechaDesde} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500" />
-                {reportErrors.fechaDesde && <p className="mt-1 text-sm text-red-600">{reportErrors.fechaDesde}</p>}
+            <div className="hf-grid-2">
+              <div className="hf-field">
+                <label>Fecha Desde *</label>
+                <input type="date" name="fechaDesde" value={reportFilters.fechaDesde} onChange={handleReportFilterChange} className="hf-input" />
+                {reportErrors.fechaDesde && <p className="hf-field-error">{reportErrors.fechaDesde}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Fecha Hasta *</label>
-                <input type="date" name="fechaHasta" value={reportFilters.fechaHasta} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500" />
-                {reportErrors.fechaHasta && <p className="mt-1 text-sm text-red-600">{reportErrors.fechaHasta}</p>}
+              <div className="hf-field">
+                <label>Fecha Hasta *</label>
+                <input type="date" name="fechaHasta" value={reportFilters.fechaHasta} onChange={handleReportFilterChange} className="hf-input" />
+                {reportErrors.fechaHasta && <p className="hf-field-error">{reportErrors.fechaHasta}</p>}
               </div>
             </div>
 
             {/* Conditional filters for inversiones */}
             {reportFilters.tipoDatos === 'inversiones' && (
-              <div className="border-t pt-4">
-                <h3 className="text-md font-semibold mb-3 text-gray-600">Filtros de Inversiones</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Operación</label>
-                    <select name="operacion" value={reportFilters.operacion} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+              <div style={{borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: 'var(--hf-space-lg)', marginTop: 'var(--hf-space-md)'}}>
+                <h3 className="text-md font-semibold mb-3" style={{color: 'var(--hf-accent-cyan)'}}>Filtros de Inversiones</h3>
+                <div className="hf-grid-4">
+                  <div className="hf-field">
+                    <label>Operación</label>
+                    <select name="operacion" value={reportFilters.operacion} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todas">Todas</option>
                       <option value="compra">Compra</option>
                       <option value="venta">Venta</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Símbolo Activo</label>
-                    <select name="simboloActivo" value={reportFilters.simboloActivo} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+                  <div className="hf-field">
+                    <label>Símbolo Activo</label>
+                    <select name="simboloActivo" value={reportFilters.simboloActivo} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todos">Todos</option>
                       {availableActivos.map((sym) => (
                         <option key={sym} value={sym}>{sym}</option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Moneda</label>
-                    <select name="monedaInv" value={reportFilters.monedaInv} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+                  <div className="hf-field">
+                    <label>Moneda</label>
+                    <select name="monedaInv" value={reportFilters.monedaInv} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todas">Todas</option>
                       <option value="ARS">ARS</option>
                       <option value="USD">USD</option>
@@ -1355,20 +1386,20 @@ const App = () => {
 
             {/* Conditional filters for cashflow */}
             {reportFilters.tipoDatos === 'cashflow' && (
-              <div className="border-t pt-4">
-                <h3 className="text-md font-semibold mb-3 text-gray-600">Filtros de Cashflow</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Tipo</label>
-                    <select name="tipoCashflow" value={reportFilters.tipoCashflow} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+              <div style={{borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: 'var(--hf-space-lg)', marginTop: 'var(--hf-space-md)'}}>
+                <h3 className="text-md font-semibold mb-3" style={{color: 'var(--hf-accent-cyan)'}}>Filtros de Cashflow</h3>
+                <div className="hf-grid-4">
+                  <div className="hf-field">
+                    <label>Tipo</label>
+                    <select name="tipoCashflow" value={reportFilters.tipoCashflow} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todos">Todos</option>
                       <option value="gasto">Gasto</option>
                       <option value="ingreso">Ingreso</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Categoría</label>
-                    <select name="categoria" value={reportFilters.categoria} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+                  <div className="hf-field">
+                    <label>Categoría</label>
+                    <select name="categoria" value={reportFilters.categoria} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todos">Todos</option>
                       <option value="Comida">Comida</option>
                       <option value="Servicios">Servicios</option>
@@ -1379,9 +1410,9 @@ const App = () => {
                       <option value="Otros">Otros</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Medio de Pago</label>
-                    <select name="medioPago" value={reportFilters.medioPago} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+                  <div className="hf-field">
+                    <label>Medio de Pago</label>
+                    <select name="medioPago" value={reportFilters.medioPago} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todos">Todos</option>
                       <option value="Efectivo">Efectivo</option>
                       <option value="Tarjeta">Tarjeta</option>
@@ -1389,9 +1420,9 @@ const App = () => {
                       <option value="Débito">Débito</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Moneda</label>
-                    <select name="monedaCash" value={reportFilters.monedaCash} onChange={handleReportFilterChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-gray-500 focus:border-gray-500">
+                  <div className="hf-field">
+                    <label>Moneda</label>
+                    <select name="monedaCash" value={reportFilters.monedaCash} onChange={handleReportFilterChange} className="hf-select">
                       <option value="todas">Todas</option>
                       <option value="ARS">ARS</option>
                       <option value="USD">USD</option>
@@ -1402,113 +1433,120 @@ const App = () => {
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-4 mt-6">
-              <button onClick={handleSearchReports} disabled={reportLoading} className="px-6 py-2 rounded-xl bg-gray-700 text-white font-medium hover:bg-gray-800 disabled:bg-gray-400">
-                {reportLoading ? 'Buscando...' : 'Buscar'}
+            <div className="hf-flex hf-gap-md" style={{marginTop: 'var(--hf-space-lg)'}}>
+              <button onClick={handleSearchReports} disabled={reportLoading} className="hf-button hf-button-primary" style={{padding: '0.75rem 2rem'}}>
+                {reportLoading ? (
+                  <span className="hf-flex hf-gap-sm" style={{alignItems: 'center'}}>
+                    <span className="hf-loading"></span>
+                    <span>Buscando...</span>
+                  </span>
+                ) : 'Buscar'}
               </button>
-              <button onClick={handleClearReportFilters} className="px-6 py-2 rounded-xl bg-gray-200 text-gray-700 font-medium hover:bg-gray-300">Limpiar</button>
+              <button onClick={handleClearReportFilters} className="hf-button hf-button-secondary" style={{padding: '0.75rem 2rem'}}>Limpiar</button>
             </div>
           </div>
         </div>
 
         {/* Results panel */}
         {reportMetrics && (
-          <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl p-8 mb-6">
-            <h2 className="text-xl font-bold mb-4 text-gray-700">Métricas</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <div className="text-sm text-gray-500">Registros</div>
-                <div className="text-2xl font-bold">{reportMetrics.count}</div>
+          <div className="hf-card hf-mb-lg">
+            <h2 className="text-xl font-bold mb-4 hf-text-gradient">Métricas</h2>
+            <div className="hf-metrics-grid">
+              <div className="hf-metric-card">
+                <div className="hf-metric-label">Registros</div>
+                <div className="hf-metric-value">{reportMetrics.count}</div>
               </div>
               {reportFilters.tipoDatos === 'inversiones' ? (
                 <>
-                  <div className="p-4 bg-green-50 rounded-xl">
-                    <div className="text-sm text-gray-500">Total Compras</div>
-                    <div className="text-2xl font-bold text-green-700">{formatCurrency(reportMetrics.totalCompras, reportFilters.monedaInv !== 'todas' ? reportFilters.monedaInv : 'ARS')}</div>
+                  <div className="hf-metric-card">
+                    <div className="hf-metric-label">Total Compras</div>
+                    <div className="hf-metric-value hf-metric-value-positive">{formatCurrency(reportMetrics.totalCompras, reportFilters.monedaInv !== 'todas' ? reportFilters.monedaInv : 'ARS')}</div>
                   </div>
-                  <div className="p-4 bg-red-50 rounded-xl">
-                    <div className="text-sm text-gray-500">Total Ventas</div>
-                    <div className="text-2xl font-bold text-red-700">{formatCurrency(reportMetrics.totalVentas, reportFilters.monedaInv !== 'todas' ? reportFilters.monedaInv : 'ARS')}</div>
+                  <div className="hf-metric-card">
+                    <div className="hf-metric-label">Total Ventas</div>
+                    <div className="hf-metric-value" style={{color: 'var(--hf-accent-blue)'}}>{formatCurrency(reportMetrics.totalVentas, reportFilters.monedaInv !== 'todas' ? reportFilters.monedaInv : 'ARS')}</div>
                   </div>
-                  <div className="p-4 bg-indigo-50 rounded-xl">
-                    <div className="text-sm text-gray-500">Neto</div>
-                    <div className="text-2xl font-bold text-indigo-700">{formatCurrency(reportMetrics.neto, reportFilters.monedaInv !== 'todas' ? reportFilters.monedaInv : 'ARS')}</div>
+                  <div className="hf-metric-card">
+                    <div className="hf-metric-label">Neto</div>
+                    <div className="hf-metric-value">{formatCurrency(reportMetrics.neto, reportFilters.monedaInv !== 'todas' ? reportFilters.monedaInv : 'ARS')}</div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="p-4 bg-red-50 rounded-xl">
-                    <div className="text-sm text-gray-500">Total Gastos</div>
-                    <div className="text-2xl font-bold text-red-700">{formatCurrency(reportMetrics.totalGastos, reportFilters.monedaCash !== 'todas' ? reportFilters.monedaCash : 'ARS')}</div>
+                  <div className="hf-metric-card">
+                    <div className="hf-metric-label">Total Gastos</div>
+                    <div className="hf-metric-value hf-metric-value-negative">{formatCurrency(reportMetrics.totalGastos, reportFilters.monedaCash !== 'todas' ? reportFilters.monedaCash : 'ARS')}</div>
                   </div>
-                  <div className="p-4 bg-green-50 rounded-xl">
-                    <div className="text-sm text-gray-500">Total Ingresos</div>
-                    <div className="text-2xl font-bold text-green-700">{formatCurrency(reportMetrics.totalIngresos, reportFilters.monedaCash !== 'todas' ? reportFilters.monedaCash : 'ARS')}</div>
+                  <div className="hf-metric-card">
+                    <div className="hf-metric-label">Total Ingresos</div>
+                    <div className="hf-metric-value hf-metric-value-positive">{formatCurrency(reportMetrics.totalIngresos, reportFilters.monedaCash !== 'todas' ? reportFilters.monedaCash : 'ARS')}</div>
                   </div>
-                  <div className="p-4 bg-indigo-50 rounded-xl">
-                    <div className="text-sm text-gray-500">Neto</div>
-                    <div className="text-2xl font-bold text-indigo-700">{formatCurrency(reportMetrics.neto, reportFilters.monedaCash !== 'todas' ? reportFilters.monedaCash : 'ARS')}</div>
+                  <div className="hf-metric-card">
+                    <div className="hf-metric-label">Neto</div>
+                    <div className="hf-metric-value">{formatCurrency(reportMetrics.neto, reportFilters.monedaCash !== 'todas' ? reportFilters.monedaCash : 'ARS')}</div>
                   </div>
                 </>
               )}
             </div>
 
-            <h3 className="text-lg font-semibold mb-3 text-gray-700">Listado de registros</h3>
+            <h3 className="text-lg font-semibold mb-3 mt-6">Listado de registros</h3>
             {reportResults.length === 0 ? (
-              <div className="text-sm text-gray-500">No se encontraron registros para esos filtros.</div>
+              <div className="hf-empty-state">
+                <p>No se encontraron registros para esos filtros.</p>
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="hf-table-container">
+                <table className="hf-table">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                      <th>Fecha</th>
                       {reportFilters.tipoDatos === 'inversiones' ? (
                         <>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operación</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Símbolo</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo Activo</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Total</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Moneda</th>
+                          <th>Operación</th>
+                          <th>Símbolo</th>
+                          <th>Tipo Activo</th>
+                          <th>Monto Total</th>
+                          <th>Moneda</th>
                         </>
                       ) : (
                         <>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Moneda</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                          <th>Tipo</th>
+                          <th>Categoría</th>
+                          <th>Monto</th>
+                          <th>Moneda</th>
+                          <th>Descripción</th>
                         </>
                       )}
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
+                      <th>Usuario</th>
                       {reportFilters.incluirAnulados && (
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                        <th>Estado</th>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {reportResults.map((r) => (
                       <tr key={r.id}>
-                        <td className="px-4 py-3 text-sm text-gray-900">{(r.fechaTransaccion?.toDate ? r.fechaTransaccion.toDate() : r.fechaOperacion?.toDate ? r.fechaOperacion.toDate() : new Date()).toLocaleDateString()}</td>
+                        <td>{(r.fechaTransaccion?.toDate ? r.fechaTransaccion.toDate() : r.fechaOperacion?.toDate ? r.fechaOperacion.toDate() : new Date()).toLocaleDateString()}</td>
                         {reportFilters.tipoDatos === 'inversiones' ? (
                           <>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.tipoOperacion}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.activo}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.tipoActivo}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{formatCurrency(r.montoTotal || 0, r.moneda)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.moneda}</td>
+                            <td><span className={`hf-badge ${r.tipoOperacion === 'compra' ? 'hf-badge-success' : 'hf-badge-info'}`}>{r.tipoOperacion}</span></td>
+                            <td style={{fontWeight: 600}}>{r.activo}</td>
+                            <td>{r.tipoActivo}</td>
+                            <td style={{fontWeight: 600}}>{formatCurrency(r.montoTotal || 0, r.moneda)}</td>
+                            <td>{r.moneda}</td>
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.tipo}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.categoria}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{formatCurrency(r.monto || 0, r.moneda)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{r.moneda}</td>
-                            <td className="px-4 py-3 text-sm text-gray-500">{r.descripcion || '-'}</td>
+                            <td><span className={`hf-badge ${r.tipo === 'gasto' ? 'hf-badge-error' : 'hf-badge-success'}`}>{r.tipo}</span></td>
+                            <td>{r.categoria}</td>
+                            <td style={{fontWeight: 600}}>{formatCurrency(r.monto || 0, r.moneda)}</td>
+                            <td>{r.moneda}</td>
+                            <td style={{color: 'var(--hf-text-secondary)'}}>{r.descripcion || '-'}</td>
                           </>
                         )}
-                        <td className="px-4 py-3 text-sm text-gray-900">{USER_NAMES[r.usuarioId]?.split(' ')[0] || 'Usuario'}</td>
+                        <td style={{color: 'var(--hf-accent-cyan)', fontWeight: 500}}>{USER_NAMES[r.usuarioId]?.split(' ')[0] || 'Usuario'}</td>
                         {reportFilters.incluirAnulados && (
-                          <td className="px-4 py-3 text-sm">{r.anulada ? <span className="text-red-600 font-semibold">ANULADA</span> : <span className="text-green-600">Activa</span>}</td>
+                          <td>{r.anulada ? <span className="hf-badge hf-badge-warning">ANULADA</span> : <span className="hf-badge hf-badge-success">Activa</span>}</td>
                         )}
                       </tr>
                     ))}

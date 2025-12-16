@@ -4,6 +4,85 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-16] UI: Transformación completa a diseño Dark Fintech Premium**
+- **Objetivo**: Transformar el diseño visual completo de HomeFlow a un estilo dark fintech moderno y profesional sin modificar ninguna lógica de negocio.
+- **Paleta de colores**:
+  - Backgrounds: #0B1020 (primary), #0E1630 (secondary), #121B36 (cards)
+  - Text: #E8EEFF (primary), #9AA8D6 (secondary), #6B7AA1 (muted)
+  - Accent: #44F1E0 (cyan), #5AA7FF (blue), #FFB36B (warm)
+  - Status: #35E39E (success), #FF5C7A (error), #FFB36B (warning), #5AA7FF (info)
+- **Sistema de Design Tokens**:
+  - Creado en `src/index.css` con variables CSS (:root)
+  - Sombras neumórficas suaves (combinación de sombras oscuras + claras para efecto elevado)
+  - Border radius: 8px (sm), 12px (md), 16px (lg), 24px (xl)
+  - Spacing estandarizado: 0.5rem a 3rem
+  - Transiciones: 150ms (fast), 250ms (base), 350ms (slow)
+- **Componentes CSS reutilizables** (en `src/index.css`):
+  - Layout: `.hf-page`, `.hf-header`, `.hf-card`, `.hf-card-secondary`
+  - Forms: `.hf-form`, `.hf-grid`, `.hf-grid-2/3/4`, `.hf-field`, `.hf-input`, `.hf-select`, `.hf-textarea`
+  - Buttons: `.hf-button`, `.hf-button-primary`, `.hf-button-secondary`, `.hf-button-danger`, `.hf-button-ghost`
+  - Badges: `.hf-badge`, `.hf-badge-success/error/warning/info`
+  - Alerts: `.hf-alert`, `.hf-alert-success/error/warning/info`
+  - Tables: `.hf-table-container`, `.hf-table` (con thead/tbody styling)
+  - Radio/Checkbox: `.hf-radio-group`, `.hf-radio-label`, `.hf-checkbox-label`
+  - Lists: `.hf-list`, `.hf-list-item`
+  - Utils: `.hf-text-gradient`, `.hf-flex`, `.hf-flex-center`, `.hf-flex-between`, `.hf-gap-*`, `.hf-mb-*`
+- **Estilos adicionales en App.css**:
+  - Welcome screen: `.hf-welcome`, `.hf-welcome-card`
+  - Tabs navigation: `.hf-tabs`, `.hf-tab`, `.hf-tab-active`
+  - Login: `.hf-login-container`, `.hf-login-card`
+  - Metrics: `.hf-metrics-grid`, `.hf-metric-card`, `.hf-metric-value-positive/negative`
+  - Feature cards: `.hf-features-grid`, `.hf-feature-card`, `.hf-feature-icon`
+  - Loading spinner: `.hf-loading` con animación
+- **Cambios visuales implementados**:
+  - **Pantallas generales**:
+    - Loading: Card con spinner animado cyan
+    - Error/Acceso Denegado: Alert card con estilo error
+    - Login: Card dark con inputs neumórficos, botón primary con glow cyan
+  - **Home screen**:
+    - Cards flotantes para cada sección (Inversiones, Gastos, Reportes)
+    - Iconos grandes con efecto glow
+    - Hover con elevación y cambio de borde
+  - **Inversiones**:
+    - Header con título gradient cyan-blue
+    - Card principal con formulario en grid responsive
+    - Radio buttons con estilo pill
+    - Inputs dark con focus cyan brillante
+    - Botón submit primary con glow al hover
+  - **Gastos**:
+    - Header consistente con Inversiones
+    - Formulario en grid 2/3 columnas según campos
+    - Lista de últimos 5 con badges para tipo (gasto/ingreso)
+    - Botón "Anular" con estilo danger
+  - **Reportes**:
+    - Card de filtros con dividers entre secciones
+    - Botones "Buscar" (primary con loading spinner) y "Limpiar" (secondary)
+    - Métricas en grid con valores colorados (positivo=verde, negativo=rojo)
+    - Tabla dark con thead cyan, hover en filas
+    - Badges para operación/tipo, estado anulada
+- **Responsive**:
+  - Grids colapsan a 1 columna en mobile (<= 768px)
+  - Tabs stack verticalmente en mobile
+  - Padding/spacing ajustado para pantallas pequeñas
+- **Accesibilidad mantenida**:
+  - Contraste adecuado (cyan #44F1E0 sobre dark)
+  - Focus visible con glow cyan
+  - Inputs legibles con placeholder muted
+  - Disabled states con opacity 0.5
+- **No se modificó**:
+  - ❌ Ninguna lógica de negocio (handlers, validaciones, queries Firestore)
+  - ❌ Ningún campo de datos (nombres, tipos, estructuras)
+  - ❌ Ninguna regla de Firestore
+  - ❌ DEV_BYPASS_AUTH sigue funcionando igual
+  - ❌ Flujo de autenticación sin cambios
+- **Archivos modificados**:
+  - `src/index.css`: Sistema completo de design tokens y componentes reutilizables
+  - `src/App.css`: Estilos adicionales para features específicas
+  - `src/App.jsx`: Actualización de className en todos los componentes (solo UI, lógica intacta)
+- **Resultado**: HomeFlow ahora luce como una aplicación fintech moderna y premium con estilo dark, neumorfismo suave, acentos cyan brillantes y experiencia visual profesional.
+
+---
+
 **[2025-12-16] Refactor: eliminación de campo redundante "Tipo de Activo" en reportes**
 - **Motivo**: El campo "Tipo de Activo" en los filtros de reportes era redundante porque el tipo ya está implícito en el símbolo seleccionado (BTC = Cripto, AAPL = Acciones, etc.).
 - **Cambios realizados**:
