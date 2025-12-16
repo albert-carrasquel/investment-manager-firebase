@@ -176,6 +176,7 @@ const App = () => {
   const [newCashflow, setNewCashflow] = useState({
     tipo: 'gasto',
     monto: '',
+    usuarioId: '',
     moneda: '',
     fechaOperacion: '',
     categoria: '',
@@ -497,6 +498,9 @@ const App = () => {
     if (!newCashflow.monto || !/^\d+(\.\d+)?$/.test(newCashflow.monto) || parseFloat(newCashflow.monto) <= 0) {
       errors.monto = 'El "Monto" debe ser un número positivo.';
     }
+    if (!newCashflow.usuarioId || !USER_NAMES[newCashflow.usuarioId]) {
+      errors.usuarioId = 'Selecciona un usuario válido.';
+    }
     if (!newCashflow.moneda || !['ARS', 'USD'].includes(newCashflow.moneda)) {
       errors.moneda = 'Selecciona una "Moneda" válida.';
     }
@@ -513,7 +517,7 @@ const App = () => {
     }
 
     const cashflowToSave = {
-      usuarioId: userId || 'dev-albert',
+      usuarioId: newCashflow.usuarioId || userId || 'dev-albert',
       tipo: newCashflow.tipo,
       monto: parseFloat(newCashflow.monto),
       moneda: newCashflow.moneda,
@@ -942,6 +946,17 @@ const App = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Usuario</label>
+              <select name="usuarioId" value={newCashflow.usuarioId} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+                <option value="" disabled>Selecciona usuario...</option>
+                {Object.entries(USER_NAMES).map(([uid, name]) => (
+                  <option key={uid} value={uid}>{name.split(' ')[0]}</option>
+                ))}
+              </select>
+              {cashflowFieldErrors.usuarioId && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.usuarioId}</p>}
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Monto</label>
@@ -991,7 +1006,7 @@ const App = () => {
               cashflows.map((c) => (
                 <div key={c.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-start justify-between">
                   <div>
-                    <div className="text-sm text-gray-500">{c.tipo.toUpperCase()} • {c.categoria}</div>
+                          <div className="text-sm text-gray-500">{c.tipo.toUpperCase()} • {c.categoria} • <span className="font-medium">{USER_NAMES[c.usuarioId] ? USER_NAMES[c.usuarioId].split(' ')[0] : 'Usuario'}</span></div>
                     <div className="font-bold text-lg">{formatCurrency(c.monto || 0, c.moneda || 'ARS')}</div>
                     <div className="text-sm text-gray-500">{(c.fechaOperacion && c.fechaOperacion.toDate) ? c.fechaOperacion.toDate().toLocaleDateString() : (c.fechaOperacion ? new Date(c.fechaOperacion).toLocaleDateString() : '')}</div>
                     {c.descripcion && <div className="text-sm text-gray-600 mt-1">{c.descripcion}</div>}

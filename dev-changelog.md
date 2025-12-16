@@ -248,3 +248,11 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 - Se añadió la posibilidad de **anular** un registro desde la vista (no se borra el documento, solo se actualizan `anulada`, `anuladaAt`, `anuladaBy`).
 - Validaciones: `monto > 0`, `fechaOperacion` obligatoria, `tipo`, `moneda` y `categoria` obligatorios. UX: mensaje "Registro guardado" al crear y limpieza del formulario.
 - Mantiene compatibilidad con `DEV_BYPASS_AUTH` (usa `dev-albert` como `usuarioId` en DEV).
+
+---
+
+**[2025-12-16] Mejora: agregar selección de `usuario` en el formulario de Gastos/Ingresos**
+- Se añadió un campo `Usuario` en el formulario para permitir asignar el registro a un usuario específico (select con `USER_NAMES`).
+- Validación: `usuarioId` ahora es obligatorio y se valida que sea un usuario conocido.
+- Persistencia: el documento guarda `usuarioId` seleccionado; si por algún motivo no se selecciona, se mantiene la compatibilidad y se usa `userId` o `dev-albert` como fallback.
+- Visual: la lista de últimos 5 ahora muestra el nombre corto (primer nombre) del usuario asociado a cada registro.
