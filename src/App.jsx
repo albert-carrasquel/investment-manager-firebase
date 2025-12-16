@@ -892,21 +892,21 @@ const App = () => {
           <h2 className="text-xl font-bold mb-6">¿Qué sección deseas consultar?</h2>
           
           <div className="hf-features-grid">
-            <div className="hf-feature-card" onClick={() => setTab('inversiones')}>
+            <button className="hf-feature-card" onClick={() => setTab('inversiones')}>
               <div className="hf-feature-icon">📈</div>
               <h3 className="hf-feature-title">Inversiones</h3>
               <p className="hf-feature-description">Gestiona tus operaciones de compra y venta</p>
-            </div>
-            <div className="hf-feature-card" onClick={() => setTab('gastos')}>
+            </button>
+            <button className="hf-feature-card" onClick={() => setTab('gastos')}>
               <div className="hf-feature-icon">💰</div>
               <h3 className="hf-feature-title">Gastos Mensuales</h3>
               <p className="hf-feature-description">Controla ingresos y gastos del hogar</p>
-            </div>
-            <div className="hf-feature-card" onClick={() => setTab('reportes')}>
+            </button>
+            <button className="hf-feature-card" onClick={() => setTab('reportes')}>
               <div className="hf-feature-icon">📊</div>
               <h3 className="hf-feature-title">Reportes</h3>
               <p className="hf-feature-description">Consulta y analiza tus movimientos</p>
-            </div>
+            </button>
           </div>
         </div>
       </div>
