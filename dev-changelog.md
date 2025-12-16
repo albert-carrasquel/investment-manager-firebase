@@ -239,3 +239,12 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 **[2025-12-15] Verificación manual: venta registrada en Firestore (verificado)**
 - Se verificó manualmente en Firebase que una operación de tipo **venta** fue registrada correctamente con los campos esperados (`tipoOperacion: 'venta'`, `usuarioId` seleccionado, `activo` en mayúsculas, `montoTotal`, `comision` como number/null cuando aplica). 
 - Estado: validación manual completada; trabajo en pausa por hoy. Próximo paso: instalar dependencias de test y ejecutar suite automatizada en la próxima sesión.
+
+---
+
+**[2025-12-16] Implementación MVP: módulo 'Gastos' (gastos/ingresos)**
+- Se añadió la pestaña **Gastos** con un formulario para registrar tanto **gastos** como **ingresos**. Campos guardados: `usuarioId`, `tipo` (gasto|ingreso), `monto` (number), `moneda`, `fecha` (serverTimestamp), `fechaOperacion` (Date), `categoria`, `descripcion` (opcional), `anulada` (boolean, default false) y campos de anulación cuando procede.
+- Se implementó una suscripción a Firestore para obtener los **últimos 5** registros (`artifacts/{appId}/public/data/cashflow`) ordenados por `timestamp` descendente.
+- Se añadió la posibilidad de **anular** un registro desde la vista (no se borra el documento, solo se actualizan `anulada`, `anuladaAt`, `anuladaBy`).
+- Validaciones: `monto > 0`, `fechaOperacion` obligatoria, `tipo`, `moneda` y `categoria` obligatorios. UX: mensaje "Registro guardado" al crear y limpieza del formulario.
+- Mantiene compatibilidad con `DEV_BYPASS_AUTH` (usa `dev-albert` como `usuarioId` en DEV).

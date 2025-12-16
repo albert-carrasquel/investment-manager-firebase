@@ -18,6 +18,7 @@ import {
   deleteDoc,
   setLogLevel, // Importación de setLogLevel para depuración
 } from 'firebase/firestore';
+import { updateDoc, orderBy, limit } from 'firebase/firestore';
 import { DollarSign } from 'lucide-react';
 import ConfirmationModal from './components/ConfirmationModal';
 import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre, getUniqueActivos } from './utils/formatters';
@@ -56,6 +57,10 @@ const firebaseConfig =
 // artifacts/{appId}/public/data/transactions
 const getTransactionsCollectionPath = (appId) =>
   `artifacts/${appId}/public/data/transactions`;
+
+// Cashflow collection path: artifacts/{appId}/public/data/cashflow
+const getCashflowCollectionPath = (appId) =>
+  `artifacts/${appId}/public/data/cashflow`;
 
 // UIDs de los super admins permitidos
 const SUPER_ADMINS = [
@@ -166,6 +171,19 @@ const App = () => {
   const [error, setError] = useState(null);
   // Replaced aggregate form error with per-field inline errors
   const [fieldErrors, setFieldErrors] = useState({});
+  // Cashflow states
+  const [cashflows, setCashflows] = useState([]);
+  const [newCashflow, setNewCashflow] = useState({
+    tipo: 'gasto',
+    monto: '',
+    moneda: '',
+    fechaOperacion: '',
+    categoria: '',
+    descripcion: '',
+  });
+  const [cashflowFieldErrors, setCashflowFieldErrors] = useState({});
+  const [showAnnulModal, setShowAnnulModal] = useState(false);
+  const [cashflowToAnnul, setCashflowToAnnul] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [docToDelete, setDocToDelete] = useState(null);
@@ -259,6 +277,33 @@ const App = () => {
 
     return () => unsubscribe();
   }, [db, userId, isAuthReady]);
+
+  // 3. Suscripción en tiempo real a los últimos 5 cashflow (gastos/ingresos)
+  useEffect(() => {
+    if (!isAuthReady || !db) return;
+
+    const cashflowPath = getCashflowCollectionPath(appId);
+    const q = query(collection(db, cashflowPath), orderBy('timestamp', 'desc'), limit(5));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const fetched = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          fetched.push({ id: docSnap.id, ...data, timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date() });
+        });
+        setCashflows(fetched);
+      },
+      (err) => {
+        console.error('Error fetching cashflow:', err);
+        // non-fatal: show as general error
+        setError('Error fetching cashflow: Problema de red o configuración.');
+      },
+    );
+
+    return () => unsubscribe();
+  }, [db, isAuthReady]);
 
   // Build a unique list of activos (optionally filtered by usuarioId from the form)
   useEffect(() => {
@@ -431,6 +476,92 @@ const App = () => {
     } catch (e) {
       console.error('Error adding transaction: ', e);
       setError('Error al agregar la transacción. Revisa las reglas de seguridad de Firestore.');
+    }
+  };
+
+  // --- CASHFLOW HANDLERS ---
+  const handleCashflowInputChange = (e) => {
+    const { name, value } = e.target;
+    let sanitized = value;
+    if (name === 'monto') sanitized = sanitizeDecimal(value, 4);
+    setNewCashflow((prev) => ({ ...prev, [name]: sanitized }));
+    setCashflowFieldErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  const handleAddCashflow = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!newCashflow.tipo || !['gasto', 'ingreso'].includes(newCashflow.tipo)) {
+      errors.tipo = 'Selecciona tipo: gasto o ingreso.';
+    }
+    if (!newCashflow.monto || !/^\d+(\.\d+)?$/.test(newCashflow.monto) || parseFloat(newCashflow.monto) <= 0) {
+      errors.monto = 'El "Monto" debe ser un número positivo.';
+    }
+    if (!newCashflow.moneda || !['ARS', 'USD'].includes(newCashflow.moneda)) {
+      errors.moneda = 'Selecciona una "Moneda" válida.';
+    }
+    if (!newCashflow.fechaOperacion) {
+      errors.fechaOperacion = 'Indica la fecha de la operación.';
+    }
+    if (!newCashflow.categoria) {
+      errors.categoria = 'Selecciona o escribe una categoría.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setCashflowFieldErrors(errors);
+      return;
+    }
+
+    const cashflowToSave = {
+      usuarioId: userId || 'dev-albert',
+      tipo: newCashflow.tipo,
+      monto: parseFloat(newCashflow.monto),
+      moneda: newCashflow.moneda,
+      fecha: serverTimestamp(),
+      fechaOperacion: new Date(`${newCashflow.fechaOperacion}T00:00:00`),
+      categoria: newCashflow.categoria,
+      descripcion: newCashflow.descripcion || '',
+      anulada: false,
+    };
+
+    try {
+      const cashflowPath = getCashflowCollectionPath(appId);
+      await addDoc(collection(db, cashflowPath), cashflowToSave);
+      setSuccessMessage('✅ Registro guardado');
+      setTimeout(() => setSuccessMessage(null), 2000);
+      setNewCashflow({ tipo: 'gasto', monto: '', moneda: '', fechaOperacion: '', categoria: '', descripcion: '' });
+      setCashflowFieldErrors({});
+    } catch (err) {
+      console.error('Error adding cashflow: ', err);
+      setError('Error al guardar registro de gasto/ingreso. Revisa reglas de Firestore.');
+    }
+  };
+
+  const _handleShowAnnulConfirm = (id) => {
+    setCashflowToAnnul(id);
+    setShowAnnulModal(true);
+  };
+
+  const handleCancelAnnul = () => {
+    setCashflowToAnnul(null);
+    setShowAnnulModal(false);
+  };
+
+  const handleAnnulCashflow = async () => {
+    if (!cashflowToAnnul) return;
+    try {
+      const cashflowPath = getCashflowCollectionPath(appId);
+      const docRef = doc(db, cashflowPath, cashflowToAnnul);
+      await updateDoc(docRef, {
+        anulada: true,
+        anuladaAt: serverTimestamp(),
+        anuladaBy: userId || 'dev-albert',
+      });
+      handleCancelAnnul();
+    } catch (err) {
+      console.error('Error annulling cashflow:', err);
+      setError('Error al anular el registro.');
+      handleCancelAnnul();
     }
   };
 
@@ -782,10 +913,108 @@ const App = () => {
     contenido = (
       <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans antialiased">
         <header className="mb-8 p-4 bg-white shadow-lg rounded-xl flex justify-between items-center">
-          <h1 className="text-2xl font-extrabold text-green-700 flex items-center">Gastos Mensuales</h1>
+          <h1 className="text-2xl font-extrabold text-green-700 flex items-center">Gastos / Ingresos</h1>
           <button className="px-4 py-2 rounded-lg bg-gray-200 text-green-700 font-bold hover:bg-gray-300" onClick={() => setTab('')}>Volver</button>
         </header>
-        <div className="bg-white rounded-xl shadow-xl p-8 text-center text-gray-500">Próximamente: Control de gastos mensuales</div>
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
+          <h2 className="text-xl font-bold mb-4 text-green-700 text-center">Registrar Gasto / Ingreso</h2>
+
+          {successMessage && (
+            <div className="p-3 mb-4 text-sm text-green-800 bg-green-100 rounded-lg">
+              {successMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleAddCashflow} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tipo</label>
+                <select name="tipo" value={newCashflow.tipo} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+                  <option value="gasto">Gasto</option>
+                  <option value="ingreso">Ingreso</option>
+                </select>
+                {cashflowFieldErrors.tipo && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.tipo}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Fecha</label>
+                <input name="fechaOperacion" value={newCashflow.fechaOperacion || ''} onChange={handleCashflowInputChange} type="date" required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500" />
+                {cashflowFieldErrors.fechaOperacion && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.fechaOperacion}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Monto</label>
+                <input name="monto" value={newCashflow.monto} onChange={handleCashflowInputChange} inputMode="decimal" placeholder="Ej: 1000.00" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500" />
+                {cashflowFieldErrors.monto && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.monto}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Moneda</label>
+                <select name="moneda" value={newCashflow.moneda} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+                  <option value="">Selecciona moneda...</option>
+                  <option value="ARS">ARS</option>
+                  <option value="USD">USD</option>
+                </select>
+                {cashflowFieldErrors.moneda && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.moneda}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Categoría</label>
+                <select name="categoria" value={newCashflow.categoria} onChange={handleCashflowInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500">
+                  <option value="">Selecciona categoría...</option>
+                  <option value="Comida">Comida</option>
+                  <option value="Servicios">Servicios</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Salud">Salud</option>
+                  <option value="Entretenimiento">Entretenimiento</option>
+                  <option value="Sueldo">Sueldo</option>
+                  <option value="Otros">Otros</option>
+                </select>
+                {cashflowFieldErrors.categoria && <p className="mt-1 text-sm text-red-600">{cashflowFieldErrors.categoria}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Descripción (opcional)</label>
+              <input name="descripcion" value={newCashflow.descripcion} onChange={handleCashflowInputChange} placeholder="Detalle breve..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-green-500 focus:border-green-500" />
+            </div>
+
+            <button type="submit" className="w-full py-2 px-4 rounded-xl shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">Guardar</button>
+          </form>
+
+          <hr className="my-6" />
+
+          <h3 className="text-lg font-semibold mb-3">Últimos 5 registros</h3>
+          <div className="space-y-3">
+            {cashflows.length === 0 ? (
+              <div className="text-sm text-gray-500">No hay registros recientes.</div>
+            ) : (
+              cashflows.map((c) => (
+                <div key={c.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-start justify-between">
+                  <div>
+                    <div className="text-sm text-gray-500">{c.tipo.toUpperCase()} • {c.categoria}</div>
+                    <div className="font-bold text-lg">{formatCurrency(c.monto || 0, c.moneda || 'ARS')}</div>
+                    <div className="text-sm text-gray-500">{(c.fechaOperacion && c.fechaOperacion.toDate) ? c.fechaOperacion.toDate().toLocaleDateString() : (c.fechaOperacion ? new Date(c.fechaOperacion).toLocaleDateString() : '')}</div>
+                    {c.descripcion && <div className="text-sm text-gray-600 mt-1">{c.descripcion}</div>}
+                    {c.anulada && <div className="mt-2 inline-block text-sm font-semibold text-red-700">ANULADA</div>}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-sm text-gray-400">{new Date(c.timestamp || Date.now()).toLocaleString()}</div>
+                    {!c.anulada ? (
+                      <button onClick={() => _handleShowAnnulConfirm(c.id)} className="px-3 py-1 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">Anular</button>
+                    ) : (
+                      <button disabled className="px-3 py-1 rounded-lg bg-gray-300 text-gray-600 text-sm">Anulada</button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Annul confirmation modal */}
+        {showAnnulModal && (
+          <ConfirmationModal onConfirm={handleAnnulCashflow} onCancel={handleCancelAnnul} />
+        )}
       </div>
     );
   } else if (tab === 'reportes') {
