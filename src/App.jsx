@@ -19,7 +19,7 @@ import {
   setLogLevel, // Importación de setLogLevel para depuración
 } from 'firebase/firestore';
 import { updateDoc, orderBy, limit, getDocs } from 'firebase/firestore';
-import { DollarSign } from 'lucide-react';
+import logo from './assets/logo.png';
 import ConfirmationModal from './components/ConfirmationModal';
 import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre, getUniqueActivos, dateStringToTimestamp, getOccurredAtFromDoc } from './utils/formatters';
 
