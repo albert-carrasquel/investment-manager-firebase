@@ -114,16 +114,13 @@
 
 /* Feature cards for home screen */
 .hf-features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--hf-space-lg);
   margin-top: var(--hf-space-2xl);
-}
-
-@media (max-width: 768px) {
-  .hf-features-grid {
-    grid-template-columns: 1fr;
-  }
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .hf-features-grid .hf-button {
