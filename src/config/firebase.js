@@ -1,0 +1,37 @@
+/* global __app_id, __firebase_config */
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, setLogLevel } from 'firebase/firestore';
+
+// --- APP ID ---
+// Estas variables se proporcionan automáticamente en ciertos entornos.
+// En local probablemente NO existan, así que usamos defaults.
+const rawAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// Limpieza del appId para que sea un segmento válido de ruta en Firestore
+export const appId = rawAppId.replace(/[.:]/g, '-').replace(/\//g, '-');
+
+// --- FIREBASE CONFIG ---
+// - Si __firebase_config existe (entorno "especial" tipo Canvas / Gemini), lo usamos.
+// - Si no existe (como en tu local o Firebase Hosting), usamos la config "normal" del proyecto.
+const firebaseConfig =
+  typeof __firebase_config !== 'undefined' && __firebase_config
+    ? JSON.parse(__firebase_config)
+    : {
+      apiKey: 'AIzaSyDqQN-Lf4xZInlqysBaFIwNG2uCGQ1Vde4',
+      authDomain: 'investment-manager-e47b6.firebaseapp.com',
+      projectId: 'investment-manager-e47b6',
+      storageBucket: 'investment-manager-e47b6.firebasestorage.app',
+      messagingSenderId: '471997247184',
+      appId: '1:471997247184:web:1a571d1cf28a8cfdd6b8d5',
+    };
+
+// --- INITIALIZATION ---
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// Enable Firestore debug logging (can be disabled in production)
+if (import.meta.env.DEV) {
+  setLogLevel('error'); // 'debug' for verbose logs, 'error' for production
+}

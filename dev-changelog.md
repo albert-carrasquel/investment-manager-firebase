@@ -300,6 +300,72 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-16] Refactor: estructura modular (Fase 1 - Preparación)**
+- **Objetivo**: preparar estructura modular para mejor mantenibilidad, reusabilidad y escalabilidad del proyecto HomeFlow.
+- **CRÍTICO**: Auth/login flow NO modificado - DEV_BYPASS_AUTH preservado intacto.
+
+- **Estructura creada**:
+  1. **`src/config/`**: Configuraciones centralizadas
+     - `firebase.js`: Inicialización única de Firebase (app, auth, db, appId)
+     - `constants.js`: Todas las constantes (DEV flags, USER_NAMES, SUPER_ADMINS, opciones de selects)
+  
+  2. **`src/services/`**: Servicios especializados de Firestore
+     - `firestorePaths.js`: Paths centralizados de colecciones
+     - `transactionsService.js`: CRUD de transactions/inversiones (createTransaction, listenToTransactions, getAllTransactions)
+     - `cashflowService.js`: CRUD de cashflow/gastos (createCashflow, annulCashflow, listenToLastNCashflows, getAllCashflows)
+     - `reportsService.js`: Generación de reportes con filtrado client-side (searchReports con métricas calculadas)
+  
+  3. **`src/utils/`**: Utilities reutilizables
+     - `formatters.js`: (existente, mantenido) Formateo, sanitización, normalización de fechas y montos
+     - `validators.js`: Validación de formularios (validateTransactionFields, validateCashflowFields, validateReportFilters)
+     - `normalizers.js`: Normalización de datos para guardado (normalizeTransactionForSave, normalizeCashflowForSave, normalizeAnnulationData)
+  
+  4. **`src/components/`**: Componentes reutilizables
+     - `ConfirmationModal.jsx`: (existente)
+     - `TransactionItem.jsx`: (existente)
+     - `MetricCard.jsx`: (existente)
+     - `Message.jsx`: NUEVO - Componente de mensajes/notificaciones reutilizable
+
+- **Beneficios**:
+  - **Modularidad**: Separación clara de responsabilidades
+  - **Reutilización**: Services y utils independientes del componente principal
+  - **Mantenibilidad**: Fácil localizar y actualizar funcionalidad específica
+  - **Testabilidad**: Services pueden testearse de forma aislada
+  - **Escalabilidad**: Fácil añadir features sin inflar App.jsx
+  - **Performance**: Sin cambios en rendimiento runtime
+  - **Backward Compatible**: Todos los datos existentes funcionan sin migración
+
+- **Estado actual (Fase 1)**:
+  - ✅ Estructura de carpetas y módulos creada
+  - ✅ Servicios implementados y funcionando
+  - ✅ Validators y normalizers listos
+  - ✅ Lint sin errores
+  - ⚠️ App.jsx AÚN NO integrado con nuevos módulos (sigue usando lógica inline)
+  - ⚠️ DEV_BYPASS_AUTH preservado y funcionando
+
+- **Próximos pasos (Fase 2 - Integración)**:
+  - Actualizar App.jsx para usar config, services, validators y normalizers
+  - Reemplazar lógica inline con llamadas a módulos
+  - Extraer componentes de features (InvestmentsForm, CashflowForm, ReportsPanel)
+  - Crear hooks personalizados (useTransactions, useCashflows)
+  - Mantener funcionalidad exactamente igual
+
+- **Documentación**:
+  - `REFACTOR_STRUCTURE.md`: Guía completa de la estructura, progreso y próximos pasos
+
+- **Testing checklist** (pendiente para Fase 2):
+  - [ ] npm run dev
+  - [ ] npm run build
+  - [ ] DEV bypass funciona
+  - [ ] Alta compra/venta
+  - [ ] Alta/anulación cashflow
+  - [ ] Reportes inversiones/cashflow
+
+- Archivos creados: `src/config/`, `src/services/`, `src/utils/validators.js`, `src/utils/normalizers.js`, `src/components/Message.jsx`, `REFACTOR_STRUCTURE.md`
+- Archivos NO modificados: `src/App.jsx` (se integra en Fase 2)
+
+---
+
 **[2025-12-16] Estandarización de manejo de fechas en todo el proyecto (transactions + cashflow)**
 - **Objetivo**: unificar la gestión de fechas en React + Firestore para evitar inconsistencias, bugs de zona horaria y facilitar consultas/reportes.
 - **Estándar definido** (aplica a todas las entidades: `transactions` e `cashflow`):
