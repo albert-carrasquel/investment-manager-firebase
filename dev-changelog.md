@@ -346,3 +346,76 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 - **Próximos pasos** (opcional, no implementado):
   - Si en el futuro se desea eliminar completamente los campos legacy de la UI (por ejemplo dejar de guardar `fechaTransaccion`/`fechaOperacion` como estado interno del formulario), se puede hacer sin romper compatibilidad con Firestore gracias a las funciones de fallback implementadas.
+
+---
+
+**[2025-12-16] Estandarización de manejo de montos en transactions (inversiones)**
+- **Objetivo**: establecer un modelo claro y consistente para guardar y usar montos en la colección `transactions`, eliminando confusión entre `montoTotal` y `totalOperacion`.
+
+- **Estándar definido** (aplica solo a `transactions`):
+  1. **`totalOperacion`** (number, obligatorio): **monto oficial del recibo** (fuente de verdad).
+     - Representa lo que realmente se pagó (compra) o se cobró (venta).
+     - Siempre en la moneda indicada por `moneda`.
+     - Puede incluir fees implícitos si el recibo ya los incluye.
+     - Es el campo principal para reportes y cálculos financieros.
+  
+  2. **`montoTotal`** (number, calculado): **monto teórico** calculado como `cantidad * precioUnitario`.
+     - Sirve para auditoría y comparación con `totalOperacion`.
+     - Permite detectar diferencias por comisiones implícitas, spreads o redondeos.
+     - Se guarda siempre que `cantidad` y `precioUnitario` existan y sean válidos.
+  
+  3. **`diferenciaOperacion`** (number, calculado): diferencia entre `totalOperacion` y `montoTotal`.
+     - Fórmula: `totalOperacion - montoTotal`.
+     - Muestra visualmente comisiones implícitas, spreads o ajustes de precio.
+     - Se guarda solo si ambos valores existen (si alguno falta, `null`).
+  
+  4. **`comision`** (number o null): comisión explícita separada.
+     - No debe guardarse como string.
+     - Si `monedaComision` está vacía, se guarda como `null`.
+
+- **Compatibilidad con datos legacy**:
+  - Documentos viejos pueden tener `totalOperacion` como string o usar `montoTotal` como monto oficial.
+  - Se implementó **función utilitaria `normalizeTransactionAmounts(doc)`** (en `src/utils/formatters.js`) que:
+    - Convierte `totalOperacion` y `montoTotal` a números con fallback.
+    - Calcula `diferenciaOperacion` si ambos existen.
+    - Retorna `montoFuenteDeVerdad`: prioridad `totalOperacion` > `montoTotal` (para reportes).
+  - Esto asegura que documentos viejos y nuevos se lean correctamente sin romper funcionalidad.
+
+- **Implementación**:
+  1. **Función utilitaria `normalizeTransactionAmounts(doc)`** (en `src/utils/formatters.js`):
+     - Parsea `totalOperacion` y `montoTotal` con fallback para strings y números.
+     - Calcula `diferenciaOperacion` si ambos valores existen.
+     - Retorna objeto con: `{ totalOperacionNumber, montoTotalNumber, diferenciaOperacionNumber, montoFuenteDeVerdad }`.
+  
+  2. **Actualización de `handleAddTransaction`**:
+     - Convierte `totalOperacion` a `number` con `parseFloat()` antes de guardar.
+     - Calcula `montoTotal` como `cantidad * precioUnitario` (siempre `number`).
+     - Calcula `diferenciaOperacion` como `totalOperacion - montoTotal`.
+     - Guarda los tres valores como `number` en Firestore.
+     - Validaciones existentes aseguran que `totalOperacion` sea obligatorio, numérico y positivo.
+  
+  3. **Reset del formulario**:
+     - `totalOperacion` vuelve a string vacío en UI, pero siempre se guarda como `number` en Firestore.
+     - `comision` se resetea a string vacío, pero se guarda como `number` o `null`.
+
+- **Validaciones**:
+  - `cantidad` > 0 (obligatorio, numérico).
+  - `precioUnitario` > 0 (obligatorio, numérico).
+  - `totalOperacion` > 0 (obligatorio, numérico) - es el campo fuente de verdad.
+  - `moneda` obligatorio.
+  - `comision` opcional, pero si existe debe ser numérico.
+
+- **Archivos modificados**:
+  - `src/utils/formatters.js`: añadida función `normalizeTransactionAmounts()`.
+  - `src/App.jsx`: actualizado `handleAddTransaction` para calcular y guardar `totalOperacion`, `montoTotal` y `diferenciaOperacion` como números.
+
+- **Cambio adicional (UX)**:
+  - Campo "Símbolo del Activo" ahora es condicional:
+    - **COMPRA**: input de texto libre con sanitización (solo letras A-Z, mayúsculas, max 10 caracteres).
+    - **VENTA**: select (combo box) con activos existentes del usuario seleccionado (no permite texto libre).
+  - Esto es coherente con el flujo: en compra se registran nuevos activos, en venta solo se seleccionan los que ya existen.
+
+- **No modificado en este commit**:
+  - Módulo `cashflow` (gastos/ingresos) no se tocó.
+  - Manejo de fechas (`createdAt`/`occurredAt`) no se modificó.
+
