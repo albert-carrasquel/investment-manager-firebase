@@ -49,15 +49,15 @@
 }
 
 .hf-tab:hover {
-  border-color: var(--hf-accent-cyan);
+  border-color: var(--hf-accent-primary);
   color: var(--hf-text-primary);
 }
 
 .hf-tab-active {
-  background: linear-gradient(135deg, rgba(68, 241, 224, 0.1) 0%, rgba(90, 167, 255, 0.1) 100%);
-  border-color: var(--hf-accent-cyan);
-  color: var(--hf-accent-cyan);
-  box-shadow: var(--hf-glow-cyan);
+  background: linear-gradient(135deg, rgba(255, 176, 136, 0.1) 0%, rgba(255, 153, 102, 0.1) 100%);
+  border-color: var(--hf-accent-primary);
+  color: var(--hf-accent-primary);
+  box-shadow: var(--hf-glow-primary);
 }
 
 /* Login form specific styles */
@@ -135,7 +135,7 @@
   font-size: 1.125rem;
   white-space: nowrap;
   border-radius: var(--hf-radius-lg);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), var(--hf-glow-cyan);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), var(--hf-glow-primary);
   transition: all var(--hf-transition-base);
 }
 
@@ -145,7 +145,7 @@
 
 .hf-features-grid .hf-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(68, 241, 224, 0.4), var(--hf-glow-cyan);
+  box-shadow: 0 6px 20px rgba(255, 176, 136, 0.4), var(--hf-glow-primary);
   filter: brightness(1.1);
 }
 
