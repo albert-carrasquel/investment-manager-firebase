@@ -226,11 +226,15 @@ const App = () => {
 
   // (Filtros y vista se desactivaron por ahora para evitar variables sin usar)
   // Nuevo estado para pestañas multitarea
-  const [tab, setTab] = useState('dashboard'); // 'dashboard', 'inversiones', 'gastos', 'reportes'
+  const [tab, setTab] = useState('dashboard'); // 'dashboard', 'portfolio', 'inversiones', 'gastos', 'reportes'
   
   // Dashboard states
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  
+  // Portfolio states
+  const [portfolioData, setPortfolioData] = useState(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
 
 
   // 1. Inicialización de Firebase (y bypass de auth en DEV)
@@ -484,6 +488,97 @@ const App = () => {
 
     calculateDashboard();
   }, [db, isAuthReady, _transactions, cashflows]);
+
+  // Calculate Portfolio data whenever transactions change
+  useEffect(() => {
+    if (!db || !isAuthReady) {
+      setPortfolioLoading(true);
+      return;
+    }
+
+    const calculatePortfolio = async () => {
+      setPortfolioLoading(true);
+      try {
+        const transactionsPath = getTransactionsCollectionPath(appId);
+        const transactionsSnapshot = await getDocs(query(collection(db, transactionsPath)));
+        const allTransactions = transactionsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        
+        // Use FIFO engine to calculate positions
+        const investmentReport = calculateInvestmentReport(allTransactions, {});
+        
+        if (investmentReport.posicionesAbiertas.length === 0) {
+          setPortfolioData({
+            posiciones: [],
+            resumen: {
+              totalInvertido: 0,
+              totalPosiciones: 0,
+              totalActivos: 0
+            },
+            porTipo: [],
+            porMoneda: []
+          });
+          setPortfolioLoading(false);
+          return;
+        }
+        
+        // Calculate totals
+        const totalInvertido = investmentReport.posicionesAbiertas.reduce(
+          (sum, pos) => sum + pos.montoInvertido,
+          0
+        );
+        
+        // Group by asset type
+        const byType = {};
+        investmentReport.posicionesAbiertas.forEach((pos) => {
+          const tipo = pos.tipoActivo || 'Otros';
+          if (!byType[tipo]) {
+            byType[tipo] = { tipo, montoInvertido: 0, cantidad: 0 };
+          }
+          byType[tipo].montoInvertido += pos.montoInvertido;
+          byType[tipo].cantidad += 1;
+        });
+        
+        const porTipo = Object.values(byType).map((item) => ({
+          ...item,
+          porcentaje: totalInvertido > 0 ? (item.montoInvertido / totalInvertido) * 100 : 0
+        })).sort((a, b) => b.montoInvertido - a.montoInvertido);
+        
+        // Group by currency
+        const byCurrency = {};
+        investmentReport.posicionesAbiertas.forEach((pos) => {
+          const moneda = pos.moneda;
+          if (!byCurrency[moneda]) {
+            byCurrency[moneda] = { moneda, montoInvertido: 0, cantidad: 0 };
+          }
+          byCurrency[moneda].montoInvertido += pos.montoInvertido;
+          byCurrency[moneda].cantidad += 1;
+        });
+        
+        const porMoneda = Object.values(byCurrency).map((item) => ({
+          ...item,
+          porcentaje: totalInvertido > 0 ? (item.montoInvertido / totalInvertido) * 100 : 0
+        })).sort((a, b) => b.montoInvertido - a.montoInvertido);
+        
+        setPortfolioData({
+          posiciones: investmentReport.posicionesAbiertas,
+          resumen: {
+            totalInvertido,
+            totalPosiciones: investmentReport.posicionesAbiertas.length,
+            totalActivos: new Set(investmentReport.posicionesAbiertas.map(p => p.activo)).size
+          },
+          porTipo,
+          porMoneda
+        });
+      } catch (err) {
+        console.error('Error calculating portfolio:', err);
+        setError('Error al calcular el portfolio.');
+      } finally {
+        setPortfolioLoading(false);
+      }
+    };
+
+    calculatePortfolio();
+  }, [db, isAuthReady, _transactions]);
 
   // (Metrics and super-admin derivation are simplified/disabled for now)
 
@@ -1017,6 +1112,9 @@ const App = () => {
             <h2>Dashboard</h2>
           </div>
           <div className="hf-flex hf-gap-sm">
+            <button className="hf-button hf-button-secondary" onClick={() => setTab('portfolio')}>
+              <span>💼 Portfolio</span>
+            </button>
             <button className="hf-button hf-button-secondary" onClick={() => setTab('inversiones')}>
               <span>📈 Inversiones</span>
             </button>
@@ -1177,6 +1275,10 @@ const App = () => {
             <div className="hf-card" style={{marginTop: 'var(--hf-space-lg)'}}>
               <h3 className="text-lg font-semibold mb-4">⚡ Acciones Rápidas</h3>
               <div className="hf-features-grid">
+                <button className="hf-button hf-button-primary" onClick={() => setTab('portfolio')}>
+                  <span className="hf-feature-icon">💼</span>
+                  <span>Ver Portfolio Actual</span>
+                </button>
                 <button className="hf-button hf-button-primary" onClick={() => setTab('inversiones')}>
                   <span className="hf-feature-icon">📈</span>
                   <span>Nueva Inversión</span>
@@ -1195,6 +1297,183 @@ const App = () => {
         ) : (
           <div className="hf-card hf-alert-error">
             <p>Error al cargar datos del dashboard</p>
+          </div>
+        )}
+      </div>
+    );
+  } else if (tab === 'portfolio') {
+    contenido = (
+      <div className="hf-page">
+        <div className="hf-header">
+          <div className="hf-flex hf-gap-md" style={{alignItems: 'center'}}>
+            <img src={logo} alt="HomeFlow Logo" style={{width: '40px', height: '40px', filter: 'drop-shadow(0 0 12px rgba(255, 176, 136, 0.3))'}} />
+            <h2>Portfolio de Posiciones Abiertas</h2>
+          </div>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('dashboard')}>🏠 Dashboard</button>
+        </div>
+
+        {portfolioLoading ? (
+          <div className="hf-flex-center" style={{minHeight: '60vh'}}>
+            <div className="hf-card hf-text-center">
+              <div className="hf-loading" style={{width: '40px', height: '40px', margin: '0 auto 1rem'}}></div>
+              <p>Cargando portfolio...</p>
+            </div>
+          </div>
+        ) : portfolioData ? (
+          <div>
+            {/* Summary Cards */}
+            <div className="hf-card" style={{marginBottom: 'var(--hf-space-lg)'}}>
+              <h3 className="text-lg font-semibold mb-4 hf-text-gradient">📊 Resumen del Portfolio</h3>
+              <div className="hf-metrics-grid">
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Total Invertido (Posiciones Abiertas)</div>
+                  <div className="hf-metric-value hf-metric-value-positive">
+                    {formatCurrency(portfolioData.resumen.totalInvertido, 'ARS')}
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Total Posiciones</div>
+                  <div className="hf-metric-value">{portfolioData.resumen.totalPosiciones}</div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Activos Únicos</div>
+                  <div className="hf-metric-value">{portfolioData.resumen.totalActivos}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Two Column Layout: Diversification */}
+            <div className="hf-grid-2" style={{gap: 'var(--hf-space-lg)', alignItems: 'start', marginBottom: 'var(--hf-space-lg)'}}>
+              {/* By Asset Type */}
+              <div className="hf-card">
+                <h3 className="text-lg font-semibold mb-4">🏷️ Diversificación por Tipo</h3>
+                {portfolioData.porTipo.length === 0 ? (
+                  <div className="hf-empty-state">
+                    <p>No hay datos de diversificación</p>
+                  </div>
+                ) : (
+                  <div className="hf-list">
+                    {portfolioData.porTipo.map((item, idx) => (
+                      <div key={idx} className="hf-list-item hf-flex-between">
+                        <div>
+                          <div className="font-bold">{item.tipo}</div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {item.cantidad} {item.cantidad === 1 ? 'posición' : 'posiciones'}
+                          </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                          <div className="hf-metric-value-positive" style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
+                            {item.porcentaje.toFixed(1)}%
+                          </div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {formatCurrency(item.montoInvertido, 'ARS')}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* By Currency */}
+              <div className="hf-card">
+                <h3 className="text-lg font-semibold mb-4">💱 Diversificación por Moneda</h3>
+                {portfolioData.porMoneda.length === 0 ? (
+                  <div className="hf-empty-state">
+                    <p>No hay datos de diversificación</p>
+                  </div>
+                ) : (
+                  <div className="hf-list">
+                    {portfolioData.porMoneda.map((item, idx) => (
+                      <div key={idx} className="hf-list-item hf-flex-between">
+                        <div>
+                          <div className="font-bold">{item.moneda}</div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {item.cantidad} {item.cantidad === 1 ? 'posición' : 'posiciones'}
+                          </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                          <div className="hf-metric-value-positive" style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
+                            {item.porcentaje.toFixed(1)}%
+                          </div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {formatCurrency(item.montoInvertido, item.moneda)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Positions Table */}
+            <div className="hf-card">
+              <h3 className="text-lg font-semibold mb-4">📋 Posiciones Actuales</h3>
+              {portfolioData.posiciones.length === 0 ? (
+                <div className="hf-empty-state">
+                  <p>No tienes posiciones abiertas en este momento</p>
+                  <button className="hf-button hf-button-primary" onClick={() => setTab('inversiones')} style={{marginTop: 'var(--hf-space-md)'}}>
+                    Registrar Primera Inversión
+                  </button>
+                </div>
+              ) : (
+                <div className="hf-table-container">
+                  <table className="hf-table">
+                    <thead>
+                      <tr>
+                        <th>Activo</th>
+                        <th>Tipo</th>
+                        <th>Moneda</th>
+                        <th>Cantidad</th>
+                        <th>Precio Promedio Compra</th>
+                        <th>Monto Invertido</th>
+                        <th>Usuario</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {portfolioData.posiciones.map((pos, idx) => (
+                        <tr key={idx}>
+                          <td style={{fontWeight: '600'}}>
+                            <div>{pos.activo}</div>
+                            {pos.nombreActivo && pos.nombreActivo !== pos.activo && (
+                              <div className="text-sm" style={{color: 'var(--hf-text-secondary)', fontWeight: 'normal'}}>
+                                {pos.nombreActivo}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className="hf-badge hf-badge-info">{pos.tipoActivo}</span>
+                          </td>
+                          <td style={{fontWeight: '500'}}>{pos.moneda}</td>
+                          <td style={{fontWeight: '600'}}>{pos.cantidadRestante.toFixed(4)}</td>
+                          <td>{formatCurrency(pos.promedioCompra, pos.moneda)}</td>
+                          <td className="hf-metric-value-positive" style={{fontWeight: 'bold'}}>
+                            {formatCurrency(pos.montoInvertido, pos.moneda)}
+                          </td>
+                          <td style={{color: 'var(--hf-accent-primary)', fontWeight: '500'}}>
+                            {USER_NAMES[pos.usuarioId]?.split(' ')[0] || 'Usuario'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Info Card */}
+            <div className="hf-card" style={{marginTop: 'var(--hf-space-lg)', background: 'rgba(100, 200, 255, 0.05)', borderColor: 'rgba(100, 200, 255, 0.2)'}}>
+              <h4 className="font-semibold mb-2" style={{color: 'var(--hf-accent-blue)'}}>ℹ️ Información</h4>
+              <p className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6'}}>
+                Este portfolio muestra todas tus posiciones abiertas actualmente (inversiones que aún no has vendido completamente). 
+                Los cálculos utilizan el método FIFO (First In, First Out) para determinar qué cantidad de cada activo permanece sin vender.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="hf-card hf-alert-error">
+            <p>Error al cargar datos del portfolio</p>
           </div>
         )}
       </div>

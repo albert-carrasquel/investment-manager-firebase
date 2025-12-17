@@ -4,7 +4,38 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
-**[2025-12-17 - 15:10] Feature: Dashboard Principal con Vista General Financiera**
+**[2025-12-17 - 16:30] Feature 2: Portfolio de Posiciones Abiertas**
+- **Objetivo**: Implementar vista completa del portfolio con todas las posiciones abiertas actuales.
+- **Problema**: No había vista de "¿Qué tengo ahora?" - solo transacciones históricas.
+- **Solución implementada**:
+  - **Estados nuevos**: `portfolioData` y `portfolioLoading`
+  - **useEffect de cálculo** (líneas ~492-587 de App.jsx):
+    - Fetch de transacciones
+    - Usa `calculateInvestmentReport().posicionesAbiertas` del engine FIFO
+    - Calcula diversificación por tipo de activo (Cripto, Acciones, etc.)
+    - Calcula diversificación por moneda (ARS, USD)
+    - Genera métricas: total invertido, total posiciones, activos únicos
+  - **Estructura de datos**:
+    - `posiciones`: Array de posiciones abiertas con cantidad, precio promedio, monto
+    - `resumen`: Métricas globales del portfolio
+    - `porTipo`: Diversificación por tipo con porcentajes
+    - `porMoneda`: Diversificación por moneda con porcentajes
+  - **UI del Portfolio** (líneas ~1305-1480):
+    - Header con navegación a Dashboard
+    - 3 metric cards: Total invertido, total posiciones, activos únicos
+    - Layout 2 columnas: Diversificación por tipo | Diversificación por moneda
+    - Tabla completa con 7 columnas: Activo, Tipo, Moneda, Cantidad, Precio Promedio, Monto, Usuario
+    - Card informativa sobre método FIFO
+  - **Integración con Dashboard**:
+    - Botón "Portfolio" agregado en header del Dashboard
+    - Botón "Ver Portfolio Actual" como primera acción rápida
+  - **Performance**: Reactive useEffect que recalcula al cambiar transacciones
+  - **UX**: Loading state, empty state si no hay posiciones, formateo consistente
+- **Beneficios**: Visibilidad completa del portfolio, diversificación clara, base para Feature 3 (precios en tiempo real)
+
+---
+
+**[2025-12-17 - 15:10] Feature 1: Dashboard Principal con Vista General Financiera**
 - **Objetivo**: Mostrar al usuario su situación financiera completa al entrar a la aplicación.
 - **Problema**: Usuario entraba a pantalla vacía sin contexto de su estado actual.
 - **Solución implementada**:

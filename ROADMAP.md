@@ -30,14 +30,27 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ---
 
-### 2. Posiciones Abiertas / Portfolio Actual ⭐⭐⭐⭐⭐
-**Estado**: ⏳ PENDIENTE
+### ✅ 2. Posiciones Abiertas / Portfolio Actual ⭐⭐⭐⭐⭐
+**Estado**: ✅ COMPLETADO
 **Problema**: No hay vista de "¿Qué tengo ahora?"
 **Solución**: Pantalla de Portfolio que muestre:
-- [ ] Por cada activo: cantidad actual, precio promedio de compra, valor actual (si integras API), P&L no realizado
-- [ ] Agrupación por tipo de activo (Cripto, Acciones, Cedears)
-- [ ] Diversificación en % del portfolio
-**Estimación**: 2-3 días
+- [x] Por cada activo: cantidad actual, precio promedio de compra, moneda
+- [x] Tabla completa con posiciones abiertas
+- [x] Agrupación por tipo de activo (Cripto, Acciones, Cedears)
+- [x] Diversificación en % del portfolio por tipo
+- [x] Diversificación en % del portfolio por moneda
+- [x] Métricas: Total invertido, total posiciones, activos únicos
+- [x] Integración con engine FIFO existente
+**Fecha inicio**: 2025-12-17 16:00
+**Fecha fin**: 2025-12-17 16:30
+**Implementación**:
+- Nuevos estados `portfolioData` y `portfolioLoading`
+- useEffect que usa `calculateInvestmentReport().posicionesAbiertas`
+- Cálculos de diversificación por tipo y moneda
+- UI con 3 metric cards de resumen
+- Layout de 2 columnas con gráficos de diversificación
+- Tabla completa de posiciones con detalles
+- Botón en Dashboard y navegación integrada
 
 ---
 
