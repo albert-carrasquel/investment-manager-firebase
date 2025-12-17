@@ -4,6 +4,31 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-17 - 14:30] Corrección: Métricas de Cashflow excluyen transacciones anuladas**
+- **Problema detectado**: Al marcar el checkbox "Incluir anulados" en reportes de cashflow, las transacciones anuladas se sumaban en las métricas financieras (Total Gastos, Total Ingresos, Neto), causando datos incorrectos.
+- **Ejemplo del bug**: Ingreso anulado de $500,000 se sumaba al total, mostrando $1,700,000 en vez de $1,200,000.
+- **Comportamiento correcto esperado** (estándar contable):
+  - El checkbox "Incluir anulados" debe controlar **solo la visibilidad en la tabla** (para auditoría)
+  - Las **métricas financieras siempre deben excluir anuladas** (reflejar estado real)
+  - Contador "Registros" muestra el total incluyendo anuladas (si checkbox activo)
+  - Montos (gastos, ingresos, neto) siempre calculan con transacciones activas únicamente
+- **Solución implementada** (`src/App.jsx`, líneas 763-772):
+  ```javascript
+  // IMPORTANTE: Para métricas financieras, SIEMPRE excluir anuladas
+  // El checkbox "incluirAnulados" solo controla la visibilidad en la tabla, no los cálculos
+  const activosParaMetricas = filtered.filter((r) => !r.anulada);
+  
+  const gastos = activosParaMetricas.filter((r) => r.tipo === 'gasto');
+  const ingresos = activosParaMetricas.filter((r) => r.tipo === 'ingreso');
+  const totalGastos = gastos.reduce((sum, r) => sum + (r.monto || 0), 0);
+  const totalIngresos = ingresos.reduce((sum, r) => sum + (r.monto || 0), 0);
+  metrics = { count: filtered.length, totalGastos, totalIngresos, neto: totalIngresos - totalGastos };
+  ```
+- **Resultado**: Ahora las métricas son precisas independientemente del estado del checkbox, cumpliendo estándares de aplicaciones financieras profesionales.
+- **Commit**: fix: métricas de cashflow ahora excluyen transacciones anuladas correctamente
+
+---
+
 **[2025-12-17] Módulo de Análisis P&L con FIFO para Inversiones**
 - **Objetivo**: Implementar análisis profesional de Profit & Loss (P&L) con metodología FIFO para la sección de Reportes → Inversiones.
 - **Archivo nuevo creado**: `src/utils/reporting.js` (354 líneas)

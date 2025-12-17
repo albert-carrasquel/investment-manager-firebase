@@ -760,8 +760,12 @@ const App = () => {
         // Clear investment report for cashflow
         setInvestmentReport(null);
         
-        const gastos = filtered.filter((r) => r.tipo === 'gasto');
-        const ingresos = filtered.filter((r) => r.tipo === 'ingreso');
+        // IMPORTANTE: Para métricas financieras, SIEMPRE excluir anuladas
+        // El checkbox "incluirAnulados" solo controla la visibilidad en la tabla, no los cálculos
+        const activosParaMetricas = filtered.filter((r) => !r.anulada);
+        
+        const gastos = activosParaMetricas.filter((r) => r.tipo === 'gasto');
+        const ingresos = activosParaMetricas.filter((r) => r.tipo === 'ingreso');
         const totalGastos = gastos.reduce((sum, r) => sum + (r.monto || 0), 0);
         const totalIngresos = ingresos.reduce((sum, r) => sum + (r.monto || 0), 0);
         metrics = { count: filtered.length, totalGastos, totalIngresos, neto: totalIngresos - totalGastos };
