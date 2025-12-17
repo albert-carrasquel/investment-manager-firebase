@@ -226,7 +226,11 @@ const App = () => {
 
   // (Filtros y vista se desactivaron por ahora para evitar variables sin usar)
   // Nuevo estado para pestañas multitarea
-  const [tab, setTab] = useState(''); // '', 'inversiones', 'gastos', 'reportes'
+  const [tab, setTab] = useState('dashboard'); // 'dashboard', 'inversiones', 'gastos', 'reportes'
+  
+  // Dashboard states
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
 
 
   // 1. Inicialización de Firebase (y bypass de auth en DEV)
@@ -375,6 +379,111 @@ const App = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_transactions, newTransaction.usuarioId]);
+
+  // Calculate Dashboard data whenever transactions or cashflows change
+  useEffect(() => {
+    if (!db || !isAuthReady) {
+      setDashboardLoading(true);
+      return;
+    }
+
+    const calculateDashboard = async () => {
+      try {
+        setDashboardLoading(true);
+
+        // 1. Fetch all transactions and cashflows
+        const transactionsPath = getTransactionsCollectionPath(appId);
+        const cashflowPath = getCashflowCollectionPath(appId);
+
+        const [transactionsSnapshot, cashflowSnapshot] = await Promise.all([
+          getDocs(query(collection(db, transactionsPath))),
+          getDocs(query(collection(db, cashflowPath)))
+        ]);
+
+        const allTransactions = [];
+        transactionsSnapshot.forEach((docSnap) => {
+          allTransactions.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        const allCashflows = [];
+        cashflowSnapshot.forEach((docSnap) => {
+          allCashflows.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // 2. Calculate Investment Metrics (all time, all users)
+        const pnlReport = calculateInvestmentReport(allTransactions, {});
+        
+        // 3. Calculate Cashflow for current month (excluding anuladas)
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        
+        const monthCashflows = allCashflows.filter((cf) => {
+          if (cf.anulada) return false;
+          const cfDate = cf.occurredAt?.toDate ? cf.occurredAt.toDate() : 
+                        cf.fechaOperacion?.toDate ? cf.fechaOperacion.toDate() : null;
+          if (!cfDate) return false;
+          return cfDate >= firstDayOfMonth && cfDate <= lastDayOfMonth;
+        });
+
+        const gastos = monthCashflows.filter((cf) => cf.tipo === 'gasto');
+        const ingresos = monthCashflows.filter((cf) => cf.tipo === 'ingreso');
+        const totalGastos = gastos.reduce((sum, cf) => sum + (cf.monto || 0), 0);
+        const totalIngresos = ingresos.reduce((sum, cf) => sum + (cf.monto || 0), 0);
+
+        // 4. Get top 5 performing assets (by P&L %)
+        const sortedAssets = [...pnlReport.porActivo]
+          .sort((a, b) => b.pnlPct - a.pnlPct)
+          .slice(0, 5);
+
+        // 5. Get cashflow by category (current month)
+        const categorySummary = {};
+        monthCashflows.forEach((cf) => {
+          const cat = cf.categoria || 'Sin categoría';
+          if (!categorySummary[cat]) {
+            categorySummary[cat] = { gastos: 0, ingresos: 0 };
+          }
+          if (cf.tipo === 'gasto') {
+            categorySummary[cat].gastos += cf.monto || 0;
+          } else {
+            categorySummary[cat].ingresos += cf.monto || 0;
+          }
+        });
+
+        setDashboardData({
+          investments: {
+            totalInvertido: pnlReport.resumenGlobal.totalInvertido,
+            totalRecuperado: pnlReport.resumenGlobal.totalRecuperado,
+            pnlNeto: pnlReport.resumenGlobal.pnlNeto,
+            pnlPct: pnlReport.resumenGlobal.pnlPct,
+            posicionesAbiertas: pnlReport.posicionesAbiertas.length,
+          },
+          cashflow: {
+            totalGastos,
+            totalIngresos,
+            neto: totalIngresos - totalGastos,
+            mes: now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }),
+          },
+          topAssets: sortedAssets,
+          categoryBreakdown: Object.entries(categorySummary)
+            .map(([categoria, data]) => ({
+              categoria,
+              gastos: data.gastos,
+              ingresos: data.ingresos,
+              neto: data.ingresos - data.gastos,
+            }))
+            .sort((a, b) => Math.abs(b.gastos) - Math.abs(a.gastos))
+            .slice(0, 5),
+        });
+      } catch (error) {
+        console.error('Error calculating dashboard:', error);
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    calculateDashboard();
+  }, [db, isAuthReady, _transactions, cashflows]);
 
   // (Metrics and super-admin derivation are simplified/disabled for now)
 
@@ -899,35 +1008,195 @@ const App = () => {
         </div>
       </div>
     );
-  } else if (!tab) {
+  } else if (tab === 'dashboard') {
     contenido = (
-      <div className="hf-welcome">
-        <div className="hf-card hf-welcome-card hf-text-center">
-          <h1 className="hf-text-gradient">
-            <img src={logo} alt="HomeFlow Logo" className="inline-block mr-2" style={{width: '48px', height: '48px', filter: 'drop-shadow(0 0 20px rgba(255, 176, 136, 0.4))'}} />
-            HomeFlow
-          </h1>
-          <p className="hf-welcome p">Bienvenido, {userName}</p>
-          
-          <div className="hf-divider"></div>
-          
-          <h2 className="text-xl font-bold mb-6">¿Qué sección deseas consultar?</h2>
-          
-          <div className="hf-features-grid">
-            <button className="hf-button hf-button-primary" onClick={() => setTab('inversiones')}>
-              <span className="hf-feature-icon">📈</span>
-              <span>Inversiones</span>
+      <div className="hf-page">
+        <div className="hf-header">
+          <div className="hf-flex hf-gap-md" style={{alignItems: 'center'}}>
+            <img src={logo} alt="HomeFlow Logo" style={{width: '40px', height: '40px', filter: 'drop-shadow(0 0 12px rgba(255, 176, 136, 0.3))'}} />
+            <h2>Dashboard</h2>
+          </div>
+          <div className="hf-flex hf-gap-sm">
+            <button className="hf-button hf-button-secondary" onClick={() => setTab('inversiones')}>
+              <span>📈 Inversiones</span>
             </button>
-            <button className="hf-button hf-button-primary" onClick={() => setTab('gastos')}>
-              <span className="hf-feature-icon">💰</span>
-              <span>Gastos/Ingresos</span>
+            <button className="hf-button hf-button-secondary" onClick={() => setTab('gastos')}>
+              <span>💰 Gastos</span>
             </button>
-            <button className="hf-button hf-button-primary" onClick={() => setTab('reportes')}>
-              <span className="hf-feature-icon">📊</span>
-              <span>Reportes</span>
+            <button className="hf-button hf-button-secondary" onClick={() => setTab('reportes')}>
+              <span>📊 Reportes</span>
             </button>
           </div>
         </div>
+
+        {dashboardLoading ? (
+          <div className="hf-flex-center" style={{minHeight: '60vh'}}>
+            <div className="hf-card hf-text-center">
+              <div className="hf-loading" style={{width: '40px', height: '40px', margin: '0 auto 1rem'}}></div>
+              <p>Cargando dashboard...</p>
+            </div>
+          </div>
+        ) : dashboardData ? (
+          <div>
+            {/* Welcome Section */}
+            <div className="hf-card" style={{marginBottom: 'var(--hf-space-lg)'}}>
+              <h1 className="text-2xl font-bold mb-2">Bienvenido, {userName}</h1>
+              <p style={{color: 'var(--hf-text-secondary)'}}>
+                Aquí tienes un resumen de tu situación financiera actual
+              </p>
+            </div>
+
+            {/* Investment Metrics */}
+            <div className="hf-card" style={{marginBottom: 'var(--hf-space-lg)'}}>
+              <h3 className="text-lg font-semibold mb-4 hf-text-gradient">💼 Inversiones</h3>
+              <div className="hf-metrics-grid">
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Total Invertido</div>
+                  <div className="hf-metric-value hf-metric-value-positive">
+                    {formatCurrency(dashboardData.investments.totalInvertido, 'ARS')}
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Total Recuperado</div>
+                  <div className="hf-metric-value" style={{color: 'var(--hf-accent-blue)'}}>
+                    {formatCurrency(dashboardData.investments.totalRecuperado, 'ARS')}
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">P&L Neto</div>
+                  <div className={`hf-metric-value ${dashboardData.investments.pnlNeto >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative'}`}>
+                    {formatCurrency(dashboardData.investments.pnlNeto, 'ARS')}
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Rendimiento</div>
+                  <div className={`hf-metric-value ${dashboardData.investments.pnlPct >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative'}`}>
+                    {dashboardData.investments.pnlPct.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Posiciones Abiertas</div>
+                  <div className="hf-metric-value">{dashboardData.investments.posicionesAbiertas}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cashflow Metrics */}
+            <div className="hf-card" style={{marginBottom: 'var(--hf-space-lg)'}}>
+              <h3 className="text-lg font-semibold mb-4 hf-text-gradient">💰 Cashflow ({dashboardData.cashflow.mes})</h3>
+              <div className="hf-metrics-grid">
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Total Ingresos</div>
+                  <div className="hf-metric-value hf-metric-value-positive">
+                    {formatCurrency(dashboardData.cashflow.totalIngresos, 'ARS')}
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Total Gastos</div>
+                  <div className="hf-metric-value hf-metric-value-negative">
+                    {formatCurrency(dashboardData.cashflow.totalGastos, 'ARS')}
+                  </div>
+                </div>
+                <div className="hf-metric-card">
+                  <div className="hf-metric-label">Balance Neto</div>
+                  <div className={`hf-metric-value ${dashboardData.cashflow.neto >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative'}`}>
+                    {formatCurrency(dashboardData.cashflow.neto, 'ARS')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="hf-grid-2" style={{gap: 'var(--hf-space-lg)', alignItems: 'start'}}>
+              {/* Top 5 Performing Assets */}
+              <div className="hf-card">
+                <h3 className="text-lg font-semibold mb-4">📈 Top 5 Activos (Rendimiento)</h3>
+                {dashboardData.topAssets.length === 0 ? (
+                  <div className="hf-empty-state">
+                    <p>No hay datos de activos cerrados</p>
+                  </div>
+                ) : (
+                  <div className="hf-list">
+                    {dashboardData.topAssets.map((asset, idx) => (
+                      <div key={idx} className="hf-list-item hf-flex-between">
+                        <div>
+                          <div className="font-bold">{asset.activo}</div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {asset.moneda} • {asset.cantidadCerrada.toFixed(4)} unidades
+                          </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                          <div className={asset.pnlPct >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative'} style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
+                            {asset.pnlPct.toFixed(2)}%
+                          </div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {formatCurrency(asset.pnlNeto, asset.moneda)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Top 5 Categories */}
+              <div className="hf-card">
+                <h3 className="text-lg font-semibold mb-4">🏷️ Top 5 Categorías (Gastos del Mes)</h3>
+                {dashboardData.categoryBreakdown.length === 0 ? (
+                  <div className="hf-empty-state">
+                    <p>No hay gastos este mes</p>
+                  </div>
+                ) : (
+                  <div className="hf-list">
+                    {dashboardData.categoryBreakdown.map((cat, idx) => (
+                      <div key={idx} className="hf-list-item hf-flex-between">
+                        <div>
+                          <div className="font-bold">{cat.categoria}</div>
+                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                            {cat.ingresos > 0 && `Ingresos: ${formatCurrency(cat.ingresos, 'ARS')}`}
+                          </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                          <div className="hf-metric-value-negative" style={{fontSize: '1.125rem', fontWeight: 'bold'}}>
+                            {formatCurrency(cat.gastos, 'ARS')}
+                          </div>
+                          {cat.neto !== -cat.gastos && (
+                            <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                              Neto: {formatCurrency(cat.neto, 'ARS')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="hf-card" style={{marginTop: 'var(--hf-space-lg)'}}>
+              <h3 className="text-lg font-semibold mb-4">⚡ Acciones Rápidas</h3>
+              <div className="hf-features-grid">
+                <button className="hf-button hf-button-primary" onClick={() => setTab('inversiones')}>
+                  <span className="hf-feature-icon">📈</span>
+                  <span>Nueva Inversión</span>
+                </button>
+                <button className="hf-button hf-button-primary" onClick={() => setTab('gastos')}>
+                  <span className="hf-feature-icon">💰</span>
+                  <span>Registrar Gasto/Ingreso</span>
+                </button>
+                <button className="hf-button hf-button-primary" onClick={() => setTab('reportes')}>
+                  <span className="hf-feature-icon">📊</span>
+                  <span>Ver Reportes Detallados</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="hf-card hf-alert-error">
+            <p>Error al cargar datos del dashboard</p>
+          </div>
+        )}
       </div>
     );
   } else if (tab === 'inversiones') {
@@ -938,7 +1207,7 @@ const App = () => {
             <img src={logo} alt="HomeFlow Logo" style={{width: '40px', height: '40px', filter: 'drop-shadow(0 0 12px rgba(255, 176, 136, 0.3))'}} />
             <h2>Inversiones</h2>
           </div>
-          <button className="hf-button hf-button-ghost" onClick={() => setTab('')}>Volver</button>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('dashboard')}>🏠 Dashboard</button>
         </div>
         
         <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
@@ -1199,7 +1468,7 @@ const App = () => {
             <img src={logo} alt="HomeFlow Logo" style={{width: '40px', height: '40px', filter: 'drop-shadow(0 0 12px rgba(255, 176, 136, 0.3))'}} />
             <h2>Gastos / Ingresos</h2>
           </div>
-          <button className="hf-button hf-button-ghost" onClick={() => setTab('')}>Volver</button>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('dashboard')}>🏠 Dashboard</button>
         </div>
         <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
           <h2 className="text-xl font-bold mb-4 hf-text-gradient text-center">Registrar Gasto / Ingreso</h2>
@@ -1327,7 +1596,7 @@ const App = () => {
             <img src={logo} alt="HomeFlow Logo" style={{width: '40px', height: '40px', filter: 'drop-shadow(0 0 12px rgba(255, 176, 136, 0.3))'}} />
             <h2>Reportes</h2>
           </div>
-          <button className="hf-button hf-button-ghost" onClick={() => setTab('')}>Volver</button>
+          <button className="hf-button hf-button-ghost" onClick={() => setTab('dashboard')}>🏠 Dashboard</button>
         </div>
 
         {/* Filters panel */}

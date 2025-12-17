@@ -4,6 +4,55 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-17 - 15:10] Feature: Dashboard Principal con Vista General Financiera**
+- **Objetivo**: Mostrar al usuario su situación financiera completa al entrar a la aplicación.
+- **Problema**: Usuario entraba a pantalla vacía sin contexto de su estado actual.
+- **Solución implementada**:
+  - **Nuevo archivo**: `ROADMAP.md` - Documento de seguimiento de mejoras prioritarias
+  - **Nuevos estados en App.jsx**:
+    - `dashboardData`: Almacena métricas calculadas
+    - `dashboardLoading`: Estado de carga del dashboard
+    - Tab por defecto cambiado de `''` a `'dashboard'`
+  - **useEffect de cálculo de Dashboard** (líneas ~380-485):
+    - Fetch de todas las transacciones y cashflows
+    - Cálculo de métricas de inversiones usando `calculateInvestmentReport()`
+    - Cálculo de cashflow del mes actual (excluyendo anuladas)
+    - Top 5 activos por rendimiento (P&L %)
+    - Top 5 categorías por gastos del mes
+    - Se ejecuta cuando cambian `transactions` o `cashflows`
+  - **UI del Dashboard** (líneas ~1010-1190):
+    - **Sección de bienvenida**: Saludo personalizado
+    - **Métricas de Inversiones** (5 cards):
+      - Total Invertido
+      - Total Recuperado
+      - P&L Neto
+      - Rendimiento % (P&L %)
+      - Posiciones Abiertas (contador)
+    - **Métricas de Cashflow** (3 cards):
+      - Total Ingresos del mes
+      - Total Gastos del mes
+      - Balance Neto del mes
+      - Muestra nombre del mes actual
+    - **Layout de 2 columnas**:
+      - Columna izquierda: Top 5 Activos con mejor rendimiento
+        - Muestra: símbolo, moneda, cantidad, P&L % y P&L neto
+        - Ordenado por P&L % descendente
+      - Columna derecha: Top 5 Categorías de gastos
+        - Muestra: categoría, ingresos (si hay), gastos, neto
+        - Ordenado por gastos descendente
+    - **Acciones Rápidas**: 3 botones grandes para navegar a:
+      - Nueva Inversión
+      - Registrar Gasto/Ingreso
+      - Ver Reportes Detallados
+  - **Navegación actualizada**:
+    - Botones "Volver" en todas las secciones ahora van a Dashboard
+    - Header del Dashboard con botones rápidos a otras secciones
+- **Performance**: Dashboard se calcula en tiempo real al cambiar datos
+- **UX**: Loading state mientras calcula, empty states si no hay datos
+- **Commit**: feat: dashboard principal con vista general financiera completa
+
+---
+
 **[2025-12-17 - 14:30] Corrección: Métricas de Cashflow excluyen transacciones anuladas**
 - **Problema detectado**: Al marcar el checkbox "Incluir anulados" en reportes de cashflow, las transacciones anuladas se sumaban en las métricas financieras (Total Gastos, Total Ingresos, Neto), causando datos incorrectos.
 - **Ejemplo del bug**: Ingreso anulado de $500,000 se sumaba al total, mostrando $1,700,000 en vez de $1,200,000.
