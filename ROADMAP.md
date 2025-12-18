@@ -108,14 +108,27 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ---
 
-### 5. Exportación de Datos ⭐⭐⭐⭐
-**Estado**: ⏳ PENDIENTE
+### ✅ 5. Exportación de Datos ⭐⭐⭐⭐
+**Estado**: ✅ COMPLETADO
 **Problema**: Para impuestos/contabilidad necesitas los datos fuera.
-**Solución**:
-- [ ] Botón "Exportar a Excel/CSV" en reportes
-- [ ] Incluir: resumen ejecutivo, detalle de trades, cálculos FIFO
-- [ ] Librería sugerida: `xlsx` o `papaparse`
-**Estimación**: 1-2 días
+**Solución**: Exportación a Excel con múltiples hojas
+- [x] Botón "Exportar a Excel" en reportes (inversiones y cashflow)
+- [x] Incluir: resumen ejecutivo, detalle de trades, cálculos FIFO
+- [x] Librería: `xlsx` (genera archivos .xlsx profesionales)
+**Fecha inicio**: 2025-12-18 17:00
+**Fecha fin**: 2025-12-18 17:30
+**Implementación**:
+- Instalación de librería: `xlsx` (9 packages)
+- Funciones de exportación:
+  - `exportInvestmentsToExcel()`: 3 hojas (Resumen, Análisis FIFO, Detalle Transacciones)
+  - `exportCashflowToExcel()`: 2 hojas (Resumen, Detalle Movimientos)
+- Botón en UI: Aparece en sección Métricas después de generar reporte
+- Formato Excel incluye:
+  - Filtros aplicados documentados
+  - Métricas principales
+  - Análisis FIFO completo (solo inversiones)
+  - Detalle de todas las transacciones con todos los campos
+- Nombre de archivo: `HomeFlow_[Tipo]_YYYY-MM-DD.xlsx`
 
 ---
 

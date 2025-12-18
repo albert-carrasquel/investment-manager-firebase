@@ -24,6 +24,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre, getUniqueActivos, dateStringToTimestamp, getOccurredAtFromDoc } from './utils/formatters';
 import { calculateInvestmentReport } from './utils/reporting';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
+import * as XLSX from 'xlsx';
 
 // --- CONFIGURACIÓN GLOBAL ---
 
@@ -142,6 +143,170 @@ const LoginForm = ({ onLogin, error }) => {
       </div>
     </div>
   );
+};
+
+// ============================================
+// EXPORT FUNCTIONS
+// ============================================
+
+/**
+ * Exportar reporte de inversiones a Excel
+ * @param {Array} transactions - Lista de transacciones filtradas
+ * @param {Object} investmentReport - Reporte FIFO calculado
+ * @param {Object} metrics - Métricas del reporte
+ * @param {Object} filters - Filtros aplicados
+ */
+const exportInvestmentsToExcel = (transactions, investmentReport, metrics, filters) => {
+  const workbook = XLSX.utils.book_new();
+
+  // HOJA 1: Resumen Ejecutivo
+  const summaryData = [
+    ['REPORTE DE INVERSIONES - HOMEFLOW'],
+    ['Generado:', new Date().toLocaleString('es-ES')],
+    [''],
+    ['FILTROS APLICADOS'],
+    ['Usuario:', filters.usuario === 'todos' ? 'Todos' : filters.usuario],
+    ['Fecha Desde:', filters.fechaDesde],
+    ['Fecha Hasta:', filters.fechaHasta],
+    ['Moneda:', filters.monedaInv === 'todas' ? 'Todas' : filters.monedaInv],
+    ['Tipo Operación:', filters.tipoOperacion === 'todas' ? 'Todas' : filters.tipoOperacion],
+    ['Activo:', filters.activo || 'Todos'],
+    [''],
+    ['MÉTRICAS GENERALES'],
+    ['Total Registros:', metrics.count],
+    ['Total Invertido:', metrics.totalInvertido || 0],
+    ['Total Recuperado:', metrics.totalRecuperado || 0],
+    ['P&L Neto:', metrics.pnlNeto || 0],
+    ['P&L %:', `${(metrics.pnlPct || 0).toFixed(2)}%`],
+  ];
+
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen');
+
+  // HOJA 2: Análisis FIFO por Activo
+  if (investmentReport && investmentReport.porActivo.length > 0) {
+    const fifoData = [
+      ['ANÁLISIS P&L POR ACTIVO (MÉTODO FIFO)'],
+      [''],
+      ['Activo', 'Moneda', 'Cant. Cerrada', 'Precio Prom. Compra', 'Precio Prom. Venta', 'Total Invertido', 'Total Recuperado', 'P&L Neto', 'P&L %']
+    ];
+
+    investmentReport.porActivo.forEach(asset => {
+      fifoData.push([
+        asset.activo,
+        asset.moneda,
+        asset.cantidadCerrada,
+        asset.promedioCompra,
+        asset.promedioVenta,
+        asset.totalInvertido,
+        asset.totalRecuperado,
+        asset.pnlNeto,
+        asset.pnlPct
+      ]);
+    });
+
+    const fifoSheet = XLSX.utils.aoa_to_sheet(fifoData);
+    XLSX.utils.book_append_sheet(workbook, fifoSheet, 'Análisis FIFO');
+  }
+
+  // HOJA 3: Detalle de Transacciones
+  const detailData = [
+    ['DETALLE DE TRANSACCIONES'],
+    [''],
+    ['Fecha', 'Operación', 'Símbolo', 'Nombre', 'Tipo Activo', 'Exchange', 'Cantidad', 'Precio Unitario', 'Comisión %', 'Comisión Monto', 'Monto Total', 'Moneda', 'Usuario', 'Anulada']
+  ];
+
+  transactions.forEach(tx => {
+    const txDate = tx.occurredAt?.toDate ? tx.occurredAt.toDate() : 
+                   tx.fechaOperacion?.toDate ? tx.fechaOperacion.toDate() : null;
+    detailData.push([
+      txDate ? txDate.toLocaleDateString('es-ES') : 'N/A',
+      tx.tipoOperacion || 'N/A',
+      tx.simbolo || 'N/A',
+      tx.nombre || 'N/A',
+      tx.tipoActivo || 'N/A',
+      tx.exchange || 'N/A',
+      tx.cantidad || 0,
+      tx.precioUnitario || 0,
+      tx.comisionPct || 0,
+      tx.comisionMonto || 0,
+      tx.montoTotal || 0,
+      tx.moneda || 'N/A',
+      tx.usuario || 'N/A',
+      tx.anulada ? 'SÍ' : 'NO'
+    ]);
+  });
+
+  const detailSheet = XLSX.utils.aoa_to_sheet(detailData);
+  XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detalle Transacciones');
+
+  // Descargar archivo
+  const fileName = `HomeFlow_Inversiones_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+};
+
+/**
+ * Exportar reporte de cashflow a Excel
+ * @param {Array} cashflows - Lista de cashflows filtrados
+ * @param {Object} metrics - Métricas del reporte
+ * @param {Object} filters - Filtros aplicados
+ */
+const exportCashflowToExcel = (cashflows, metrics, filters) => {
+  const workbook = XLSX.utils.book_new();
+
+  // HOJA 1: Resumen Ejecutivo
+  const summaryData = [
+    ['REPORTE DE CASHFLOW - HOMEFLOW'],
+    ['Generado:', new Date().toLocaleString('es-ES')],
+    [''],
+    ['FILTROS APLICADOS'],
+    ['Usuario:', filters.usuario === 'todos' ? 'Todos' : filters.usuario],
+    ['Fecha Desde:', filters.fechaDesde],
+    ['Fecha Hasta:', filters.fechaHasta],
+    ['Tipo:', filters.tipoCashflow === 'todos' ? 'Todos' : filters.tipoCashflow],
+    ['Categoría:', filters.categoria === 'todos' ? 'Todas' : filters.categoria],
+    ['Medio de Pago:', filters.medioPago === 'todos' ? 'Todos' : filters.medioPago],
+    ['Moneda:', filters.monedaCash === 'todas' ? 'Todas' : filters.monedaCash],
+    [''],
+    ['MÉTRICAS GENERALES'],
+    ['Total Registros:', metrics.count],
+    ['Total Gastos:', metrics.totalGastos || 0],
+    ['Total Ingresos:', metrics.totalIngresos || 0],
+    ['Balance Neto:', metrics.neto || 0],
+  ];
+
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen');
+
+  // HOJA 2: Detalle de Movimientos
+  const detailData = [
+    ['DETALLE DE MOVIMIENTOS'],
+    [''],
+    ['Fecha', 'Tipo', 'Categoría', 'Descripción', 'Monto', 'Moneda', 'Medio de Pago', 'Usuario', 'Anulada']
+  ];
+
+  cashflows.forEach(cf => {
+    const cfDate = cf.occurredAt?.toDate ? cf.occurredAt.toDate() : 
+                   cf.fechaOperacion?.toDate ? cf.fechaOperacion.toDate() : null;
+    detailData.push([
+      cfDate ? cfDate.toLocaleDateString('es-ES') : 'N/A',
+      cf.tipo || 'N/A',
+      cf.categoria || 'N/A',
+      cf.descripcion || 'N/A',
+      cf.monto || 0,
+      cf.moneda || 'N/A',
+      cf.medioPago || 'N/A',
+      cf.usuario || 'N/A',
+      cf.anulada ? 'SÍ' : 'NO'
+    ]);
+  });
+
+  const detailSheet = XLSX.utils.aoa_to_sheet(detailData);
+  XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detalle Movimientos');
+
+  // Descargar archivo
+  const fileName = `HomeFlow_Cashflow_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
 };
 
 
@@ -2107,7 +2272,22 @@ const App = () => {
         {/* Results panel */}
         {reportMetrics && (
           <div className="hf-card hf-mb-lg">
-            <h2 className="text-xl font-bold mb-4 hf-text-gradient">Métricas</h2>
+            <div className="hf-flex-between" style={{marginBottom: 'var(--hf-space-md)'}}>
+              <h2 className="text-xl font-bold hf-text-gradient">Métricas</h2>
+              <button 
+                onClick={() => {
+                  if (reportFilters.tipoDatos === 'inversiones') {
+                    exportInvestmentsToExcel(reportResults, investmentReport, reportMetrics, reportFilters);
+                  } else {
+                    exportCashflowToExcel(reportResults, reportMetrics, reportFilters);
+                  }
+                }}
+                className="hf-button hf-button-primary"
+                style={{padding: '0.5rem 1.5rem'}}
+              >
+                📥 Exportar a Excel
+              </button>
+            </div>
             <div className="hf-metrics-grid">
               <div className="hf-metric-card">
                 <div className="hf-metric-label">Registros</div>

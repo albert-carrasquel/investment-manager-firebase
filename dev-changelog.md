@@ -4,6 +4,40 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-18 - 17:30] FEATURE 5 COMPLETADA: Exportación de Datos a Excel**
+- **Contexto**: Facilitar declaración de impuestos, auditorías y respaldos externos
+- **Implementación**:
+  1. **Instalación**: `npm install xlsx` (9 packages agregados)
+  2. **Función exportInvestmentsToExcel()**:
+     - Hoja 1 "Resumen": Filtros aplicados + métricas generales
+     - Hoja 2 "Análisis FIFO": Tabla con P&L por activo (método FIFO)
+     - Hoja 3 "Detalle Transacciones": Todas las transacciones con campos completos
+  3. **Función exportCashflowToExcel()**:
+     - Hoja 1 "Resumen": Filtros aplicados + métricas generales
+     - Hoja 2 "Detalle Movimientos": Todos los cashflows con campos completos
+  4. **Botón UI**: "📥 Exportar a Excel"
+     - Ubicación: Panel de Métricas (después de buscar reporte)
+     - Detecta automáticamente tipo de reporte (inversiones vs cashflow)
+     - Genera archivo con nombre: HomeFlow_[Tipo]_YYYY-MM-DD.xlsx
+- **Librería xlsx**:
+  - `XLSX.utils.book_new()`: Crear workbook
+  - `XLSX.utils.aoa_to_sheet()`: Array de arrays a hoja
+  - `XLSX.utils.book_append_sheet()`: Agregar hoja al workbook
+  - `XLSX.writeFile()`: Descargar archivo
+- **Beneficios**:
+  - ✅ Formato profesional Excel (.xlsx)
+  - ✅ Múltiples hojas organizadas
+  - ✅ Incluye análisis FIFO completo
+  - ✅ Documentación de filtros aplicados
+  - ✅ Ideal para contadores e impuestos
+  - ✅ Un clic para exportar todo
+- **Archivos modificados**:
+  - App.jsx: +import xlsx, +2 funciones de exportación, +botón UI
+  - package.json: +xlsx dependency
+- **Commit**: (pendiente)
+
+---
+
 **[2025-12-18 - 16:45] FEATURE 4 COMPLETADA: Gráficos y Visualizaciones con Recharts**
 - **Contexto**: Después de simplificar la app eliminando Feature 3, ahora agregamos visualizaciones para mejorar UX
 - **Implementación**:
