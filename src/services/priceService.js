@@ -119,8 +119,9 @@ async function getCryptoPrice(symbol, currency) {
 /**
  * Obtiene precio de acción US desde Alpha Vantage API (gratuita - 5 req/min)
  * NOTA: Requiere API key gratuita de https://www.alphavantage.co/support/#api-key
+ * IMPORTANTE: Esta función solo se llama para acciones en USD (mercado US)
  * @param {string} symbol - Símbolo de la acción (AAPL, GOOGL, etc.)
- * @param {string} currency - Moneda (USD principalmente)
+ * @param {string} currency - Moneda (siempre USD para stocks US)
  * @returns {Promise<number|null>} - Precio actual o null si falla
  */
 async function getStockPrice(symbol, currency) {
@@ -132,29 +133,35 @@ async function getStockPrice(symbol, currency) {
     
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`Alpha Vantage API error: ${response.status}`);
+      console.error(`[PriceService] Alpha Vantage API error: ${response.status}`);
       return null;
     }
 
     const data = await response.json();
     
+    // Verificar si hay error de rate limit o API
+    if (data['Note']) {
+      console.warn(`[PriceService] Alpha Vantage rate limit: ${data['Note']}`);
+      return null;
+    }
+    
+    if (data['Error Message']) {
+      console.error(`[PriceService] Alpha Vantage error: ${data['Error Message']}`);
+      return null;
+    }
+    
     // Alpha Vantage devuelve el precio en "Global Quote" > "05. price"
     const price = parseFloat(data['Global Quote']?.['05. price']);
     
     if (!isNaN(price) && price > 0) {
-      // Alpha Vantage devuelve en USD, si necesitas ARS, deberías multiplicar por tipo de cambio
-      if (currency === 'ARS') {
-        // Aquí podrías integrar un servicio de tipo de cambio USD->ARS
-        // Por ahora retornamos null para ARS en stocks
-        console.warn('Stock price in ARS not implemented yet');
-        return null;
-      }
+      console.log(`[PriceService] Alpha Vantage: ${symbol} = ${price} USD`);
       return price;
     }
     
+    console.warn(`[PriceService] Alpha Vantage: No se encontró precio para ${symbol}`);
     return null;
   } catch (error) {
-    console.error('Error fetching stock price from Alpha Vantage:', error);
+    console.error('[PriceService] Error fetching stock price from Alpha Vantage:', error);
     return null;
   }
 }
@@ -187,13 +194,14 @@ async function getArgentinaAssetPrice(symbol, currency) {
 }
 
 /**
- * Detecta el tipo de activo basado en el símbolo y tipo
- * IMPORTANTE: Esta función es crítica para evitar confundir Cedears con Acciones US
+ * Detecta el tipo de activo basado en el símbolo, tipo y MONEDA
+ * IMPORTANTE: La MONEDA es crítica para diferenciar Acciones US vs Argentinas
  * @param {string} symbol - Símbolo del activo
  * @param {string} tipoActivo - Tipo: Cripto, Acciones, Cedears, etc.
+ * @param {string} currency - Moneda: USD o ARS (crítico para detección)
  * @returns {string} - Tipo detectado: 'crypto', 'stock-us', 'argentina', 'unknown'
  */
-function detectAssetType(symbol, tipoActivo) {
+function detectAssetType(symbol, tipoActivo, currency) {
   // REGLA 1: Criptomonedas - siempre tienen prioridad si están en el mapa
   if (tipoActivo === 'Cripto' || tipoActivo === 'Criptomoneda' || COINGECKO_SYMBOL_MAP[symbol.toUpperCase()]) {
     return 'crypto';
@@ -212,14 +220,26 @@ function detectAssetType(symbol, tipoActivo) {
     return 'argentina';
   }
   
-  // REGLA 4: Tipo "Acciones" - puede ser US o Argentina
+  // REGLA 4: Tipo "Acciones" - LA MONEDA ES CRÍTICA AQUÍ
   if (tipoActivo === 'Acciones') {
-    // 4.1: Si tiene sufijo .BA (Buenos Aires), es Argentina
+    // 4.1: Si la moneda es ARS → Es acción argentina (BYMA/Merval)
+    if (currency === 'ARS') {
+      console.log(`[PriceService] ${symbol} tipo "Acciones" en ARS → acción argentina`);
+      return 'argentina';
+    }
+    
+    // 4.2: Si la moneda es USD → Es acción US (NASDAQ/NYSE)
+    if (currency === 'USD') {
+      console.log(`[PriceService] ${symbol} tipo "Acciones" en USD → stock US`);
+      return 'stock-us';
+    }
+    
+    // 4.3: Si tiene sufijo .BA (Buenos Aires), es Argentina (redundante pero seguro)
     if (symbol.includes('.BA')) {
       return 'argentina';
     }
     
-    // 4.2: Acciones argentinas conocidas (BYMA/Merval)
+    // 4.4: Acciones argentinas conocidas (BYMA/Merval) - por si acaso
     const accionesArgentinas = [
       'YPFD', 'GGAL', 'PAMP', 'ALUA', 'COME', 'TRAN', 'EDN', 'LOMA',
       'TGSU2', 'TXAR', 'VALO', 'BBAR', 'BMA', 'SUPV', 'CRES', 'CEPU',
@@ -230,10 +250,8 @@ function detectAssetType(symbol, tipoActivo) {
       return 'argentina';
     }
     
-    // 4.3: Heurística: 4 letras mayúsculas suele ser Argentina (ej: GGAL, YPFD)
-    // Pero AAPL, MSFT también son 4 letras... así que NO es confiable
-    // Por defecto, asumimos que "Acciones" sin más contexto son US
-    console.log(`[PriceService] ${symbol} tipo "Acciones" → asumiendo stock US (usa "Cedears" si es argentino)`);
+    // 4.5: Por defecto, asumimos stock-us si no hay otra señal
+    console.log(`[PriceService] ${symbol} tipo "Acciones" → asumiendo stock US (sin moneda clara)`);
     return 'stock-us';
   }
   
@@ -251,11 +269,11 @@ export async function getCurrentPrice(symbol, currency, tipoActivo) {
   // Verificar cache primero (incluye tipoActivo para diferenciar Cedears)
   const cachedPrice = getPriceFromCache(symbol, currency, tipoActivo);
   if (cachedPrice !== null) {
-    console.log(`[PriceService] Cache hit: ${symbol} (${tipoActivo})`);
+    console.log(`[PriceService] Cache hit: ${symbol} (${tipoActivo}) ${currency}`);
     return cachedPrice;
   }
 
-  const assetType = detectAssetType(symbol, tipoActivo);
+  const assetType = detectAssetType(symbol, tipoActivo, currency);
   let price = null;
 
   try {
@@ -265,7 +283,8 @@ export async function getCurrentPrice(symbol, currency, tipoActivo) {
         break;
       
       case 'stock-us':
-        price = await getStockPrice(symbol, currency);
+        // Stock US siempre en USD (Alpha Vantage)
+        price = await getStockPrice(symbol, 'USD');
         break;
       
       case 'argentina':
@@ -273,7 +292,7 @@ export async function getCurrentPrice(symbol, currency, tipoActivo) {
         break;
       
       default:
-        console.warn(`[PriceService] Unknown asset type for ${symbol} (${tipoActivo})`);
+        console.warn(`[PriceService] Unknown asset type for ${symbol} (${tipoActivo}) ${currency}`);
         return null;
     }
 

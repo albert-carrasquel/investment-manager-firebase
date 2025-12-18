@@ -4,6 +4,43 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-18 - 09:00] Fix crítico: Detección por MONEDA para Acciones US vs Argentinas**
+- **Problema detectado por usuario**:
+  - AMD (Acciones, USD) → No aparecía precio (debería usar Alpha Vantage)
+  - BITF (Acciones, ARS) → Intentaba Alpha Vantage (incorrecto, es acción argentina)
+  - Sistema ignoraba la MONEDA, solo miraba `tipoActivo`
+- **Causa raíz**: `detectAssetType()` no consideraba el campo `currency`
+- **Impacto**: Todas las acciones se trataban como US, bloqueando acciones argentinas
+- **Solución implementada**:
+  - **`detectAssetType()` ahora recibe 3 parámetros**: `(symbol, tipoActivo, currency)`
+  - **Lógica actualizada para "Acciones"**:
+    ```javascript
+    if (tipoActivo === 'Acciones') {
+      if (currency === 'ARS') → return 'argentina'  // IOL/PPI API
+      if (currency === 'USD') → return 'stock-us'   // Alpha Vantage
+    }
+    ```
+  - **`getCurrentPrice()` pasa `currency` a `detectAssetType()`**
+  - **`getStockPrice()` simplificado**:
+    - Eliminado el bloqueo de ARS (ya no llegará aquí)
+    - Agregados logs de rate limit y errores de API
+    - Solo maneja USD (stock-us)
+  - **Logs mejorados**: Ahora incluyen moneda en todos los mensajes
+- **Comportamiento correcto**:
+  | Registro | Tipo | Moneda | Detección | API | Estado |
+  |----------|------|--------|-----------|-----|--------|
+  | AMD | Acciones | USD | stock-us | Alpha Vantage | ✅ Funciona |
+  | BITF | Acciones | ARS | argentina | ❌ No implementado | ⏳ N/D |
+  | AAPL | Acciones | USD | stock-us | Alpha Vantage | ✅ Funciona |
+  | NVDA | Cedears | ARS | argentina | ❌ No implementado | ⏳ N/D |
+  | BTC | Cripto | USD/ARS | crypto | CoinGecko | ✅ Funciona |
+- **Testing recomendado**:
+  - Verificar consola del navegador para logs detallados
+  - Confirmar que AMD en USD muestra precio
+  - Confirmar que BITF en ARS muestra N/D (correcto, es acción argentina)
+
+---
+
 **[2025-12-17 - 17:40] Fix crítico: Diferenciación entre Cedears y Acciones US**
 - **Problema detectado**: 
   - Sistema no diferenciaba Cedears de Acciones US
