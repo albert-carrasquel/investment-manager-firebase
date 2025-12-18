@@ -54,32 +54,35 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ---
 
-### ✅ 3. Integración de Precios en Tiempo Real ⭐⭐⭐⭐
-**Estado**: ✅ COMPLETADO
-**Problema**: No había forma de saber el valor actual de las inversiones.
-**Solución**:
-- [x] API de CoinGecko para criptomonedas (gratuita, 50 req/min)
-- [x] API de Alpha Vantage para stocks US (gratuita, 5 req/min)
-- [x] Sistema de cache (5 minutos TTL) para evitar rate limits
-- [x] Cálculo de P&L no realizado: `(precioActual - precioPromedio) * cantidadActual`
-- [x] Nuevas columnas en Portfolio: Precio Actual, Valor Actual, P&L No Realizado, P&L %
-- [x] Métricas globales actualizadas: Valor Actual Total, P&L No Realizado Total
-- [x] Detección automática de tipo de activo (crypto/stock-us/argentina)
-- [x] Loading states y manejo de errores
-**Fecha inicio**: 2025-12-17 16:40
-**Fecha fin**: 2025-12-17 17:20
-**Implementación**:
-- Nuevo servicio `priceService.js` (~300 líneas)
-- Funciones: `getCurrentPrice()`, `getMultiplePrices()`, cache management
-- Estados nuevos: `currentPrices`, `pricesLoading`, `pricesError`
-- useEffect actualizado para fetch de precios en paralelo
-- UI del Portfolio con 4 columnas nuevas
-- Métricas del resumen: Total Invertido, Valor Actual, P&L No Realizado
-- Card informativo sobre fuentes de precios y cálculo de P&L
-**Notas**:
-- Alpha Vantage requiere API key (usar 'demo' o registrarse gratis)
-- Mercado argentino pendiente (requiere investigar IOL/PPI APIs)
-- Cache de 5 minutos para optimizar rate limits
+### ❌ 3. Integración de Precios en Tiempo Real ⭐⭐⭐⭐
+**Estado**: ❌ CANCELADO
+**Decisión**: Eliminada la feature completa por complejidad innecesaria
+**Problema original**: No había forma de saber el valor actual de las inversiones.
+**Por qué se canceló**:
+- APIs externas con problemas de CORS (Rava, Alpha Vantage)
+- Proxies CORS también fallaban
+- Rate limits restrictivos
+- Datos en tiempo real NO son necesarios para la gestión de inversiones
+- HomeFlow es una herramienta de **registro contable**, no trading en vivo
+**Nueva filosofía**:
+- El P&L se calcula SOLO cuando hay una venta (P&L realizado)
+- Portfolio muestra posiciones abiertas sin precios actuales
+- Focus en matemáticas simples: compra vs venta
+- Sin dependencias externas = mayor confiabilidad
+**Fecha cancelación**: 2025-12-18 15:30
+**Cambios implementados**:
+- [x] Eliminado `priceService.js` completo (~400 líneas)
+- [x] Eliminados estados de precios en `App.jsx`
+- [x] Simplificada tabla Portfolio: 7 columnas (antes 11)
+- [x] Eliminadas columnas: Precio Actual, Valor Actual, P&L No Realizado, P&L %
+- [x] Eliminadas métricas: Valor Actual Total, P&L No Realizado Total
+- [x] Mantenidas: Total Invertido, Total Posiciones, Activos Únicos
+**Beneficios de la cancelación**:
+- ✅ Código más simple y mantenible
+- ✅ Sin dependencias de APIs externas
+- ✅ Sin problemas de CORS
+- ✅ Carga instantánea (sin llamadas HTTP)
+- ✅ Focus en datos reales y confiables
 
 ---
 

@@ -23,7 +23,6 @@ import logo from './assets/logo.png';
 import ConfirmationModal from './components/ConfirmationModal';
 import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre, getUniqueActivos, dateStringToTimestamp, getOccurredAtFromDoc } from './utils/formatters';
 import { calculateInvestmentReport } from './utils/reporting';
-import { getMultiplePrices, clearPriceCache } from './services/priceService';
 
 // --- CONFIGURACIÓN GLOBAL ---
 
@@ -236,9 +235,6 @@ const App = () => {
   // Portfolio states
   const [portfolioData, setPortfolioData] = useState(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
-  const [currentPrices, setCurrentPrices] = useState(new Map());
-  const [pricesLoading, setPricesLoading] = useState(false);
-  const [pricesError, setPricesError] = useState(null);
 
 
   // 1. Inicialización de Firebase (y bypass de auth en DEV)
@@ -573,19 +569,6 @@ const App = () => {
           porTipo,
           porMoneda
         });
-        
-        // Fetch current prices for all positions
-        setPricesLoading(true);
-        setPricesError(null);
-        try {
-          const priceMap = await getMultiplePrices(investmentReport.posicionesAbiertas);
-          setCurrentPrices(priceMap);
-        } catch (priceErr) {
-          console.error('Error fetching prices:', priceErr);
-          setPricesError('Error al obtener precios actuales. Mostrando solo costos históricos.');
-        } finally {
-          setPricesLoading(false);
-        }
       } catch (err) {
         console.error('Error calculating portfolio:', err);
         setError('Error al calcular el portfolio.');
@@ -1349,60 +1332,6 @@ const App = () => {
                   </div>
                 </div>
                 <div className="hf-metric-card">
-                  <div className="hf-metric-label">Valor Actual del Portfolio</div>
-                  <div className="hf-metric-value hf-metric-value-positive">
-                    {(() => {
-                      let totalValorActual = 0;
-                      let hasAnyPrice = false;
-                      portfolioData.posiciones.forEach(pos => {
-                        const priceKey = `${pos.activo}_${pos.moneda}`;
-                        const currentPrice = currentPrices.get(priceKey);
-                        if (currentPrice !== undefined && currentPrice !== null) {
-                          totalValorActual += pos.cantidadRestante * currentPrice;
-                          hasAnyPrice = true;
-                        }
-                      });
-                      return hasAnyPrice 
-                        ? formatCurrency(totalValorActual, 'ARS') 
-                        : <span className="text-sm" style={{color: 'var(--hf-text-muted)'}}>Calculando...</span>;
-                    })()}
-                  </div>
-                </div>
-                <div className="hf-metric-card">
-                  <div className="hf-metric-label">P&L No Realizado</div>
-                  <div className={(() => {
-                    let totalPnL = 0;
-                    let hasAnyPrice = false;
-                    portfolioData.posiciones.forEach(pos => {
-                      const priceKey = `${pos.activo}_${pos.moneda}`;
-                      const currentPrice = currentPrices.get(priceKey);
-                      if (currentPrice !== undefined && currentPrice !== null) {
-                        const valorActual = pos.cantidadRestante * currentPrice;
-                        totalPnL += valorActual - pos.montoInvertido;
-                        hasAnyPrice = true;
-                      }
-                    });
-                    return `hf-metric-value ${hasAnyPrice ? (totalPnL >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative') : ''}`;
-                  })()}>
-                    {(() => {
-                      let totalPnL = 0;
-                      let hasAnyPrice = false;
-                      portfolioData.posiciones.forEach(pos => {
-                        const priceKey = `${pos.activo}_${pos.moneda}`;
-                        const currentPrice = currentPrices.get(priceKey);
-                        if (currentPrice !== undefined && currentPrice !== null) {
-                          const valorActual = pos.cantidadRestante * currentPrice;
-                          totalPnL += valorActual - pos.montoInvertido;
-                          hasAnyPrice = true;
-                        }
-                      });
-                      return hasAnyPrice 
-                        ? formatCurrency(totalPnL, 'ARS') 
-                        : <span className="text-sm" style={{color: 'var(--hf-text-muted)'}}>Calculando...</span>;
-                    })()}
-                  </div>
-                </div>
-                <div className="hf-metric-card">
                   <div className="hf-metric-label">Total Posiciones</div>
                   <div className="hf-metric-value">{portfolioData.resumen.totalPosiciones}</div>
                 </div>
@@ -1509,27 +1438,12 @@ const App = () => {
                         <th>Moneda</th>
                         <th>Cantidad</th>
                         <th>Precio Prom. Compra</th>
-                        <th>Precio Actual</th>
                         <th>Monto Invertido</th>
-                        <th>Valor Actual</th>
-                        <th>P&L No Realizado</th>
-                        <th>P&L %</th>
                         <th>Usuario</th>
                       </tr>
                     </thead>
                     <tbody>
                       {portfolioData.posiciones.map((pos, idx) => {
-                        const priceKey = `${pos.activo}_${pos.moneda}`;
-                        const currentPrice = currentPrices.get(priceKey);
-                        const hasPrice = currentPrice !== undefined && currentPrice !== null;
-                        
-                        // Calcular P&L no realizado
-                        const valorActual = hasPrice ? pos.cantidadRestante * currentPrice : null;
-                        const pnlNoRealizado = hasPrice ? valorActual - pos.montoInvertido : null;
-                        const pnlNoRealizadoPct = hasPrice && pos.montoInvertido > 0 
-                          ? (pnlNoRealizado / pos.montoInvertido) * 100 
-                          : null;
-                        
                         return (
                           <tr key={idx}>
                             <td style={{fontWeight: '600'}}>
@@ -1546,46 +1460,8 @@ const App = () => {
                             <td style={{fontWeight: '500'}}>{pos.moneda}</td>
                             <td style={{fontWeight: '600'}}>{pos.cantidadRestante.toFixed(4)}</td>
                             <td>{formatCurrency(pos.promedioCompra, pos.moneda)}</td>
-                            <td>
-                              {hasPrice ? (
-                                <span style={{fontWeight: '600', color: 'var(--hf-accent-blue)'}}>
-                                  {formatCurrency(currentPrice, pos.moneda)}
-                                </span>
-                              ) : (
-                                <span className="text-sm" style={{color: 'var(--hf-text-muted)'}}>
-                                  {pricesLoading ? 'Cargando...' : 'N/D'}
-                                </span>
-                              )}
-                            </td>
                             <td style={{fontWeight: 'bold', color: 'var(--hf-text-secondary)'}}>
                               {formatCurrency(pos.montoInvertido, pos.moneda)}
-                            </td>
-                            <td>
-                              {hasPrice ? (
-                                <span style={{fontWeight: 'bold', color: 'var(--hf-accent-primary)'}}>
-                                  {formatCurrency(valorActual, pos.moneda)}
-                                </span>
-                              ) : (
-                                <span className="text-sm" style={{color: 'var(--hf-text-muted)'}}>N/D</span>
-                              )}
-                            </td>
-                            <td>
-                              {hasPrice ? (
-                                <span className={pnlNoRealizado >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative'} style={{fontWeight: 'bold'}}>
-                                  {formatCurrency(pnlNoRealizado, pos.moneda)}
-                                </span>
-                              ) : (
-                                <span className="text-sm" style={{color: 'var(--hf-text-muted)'}}>N/D</span>
-                              )}
-                            </td>
-                            <td>
-                              {hasPrice ? (
-                                <span className={pnlNoRealizadoPct >= 0 ? 'hf-metric-value-positive' : 'hf-metric-value-negative'} style={{fontWeight: 'bold'}}>
-                                  {pnlNoRealizadoPct.toFixed(2)}%
-                                </span>
-                              ) : (
-                                <span className="text-sm" style={{color: 'var(--hf-text-muted)'}}>N/D</span>
-                              )}
                             </td>
                             <td style={{color: 'var(--hf-accent-primary)', fontWeight: '500'}}>
                               {USER_NAMES[pos.usuarioId]?.split(' ')[0] || 'Usuario'}
@@ -1596,57 +1472,6 @@ const App = () => {
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
-
-            {/* Info Card */}
-            <div className="hf-card" style={{marginTop: 'var(--hf-space-lg)', background: 'rgba(100, 200, 255, 0.05)', borderColor: 'rgba(100, 200, 255, 0.2)'}}>
-              <h4 className="font-semibold mb-2" style={{color: 'var(--hf-accent-blue)'}}>ℹ️ Información sobre Precios en Tiempo Real</h4>
-              
-              <p className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6', marginBottom: '0.75rem'}}>
-                Este portfolio muestra todas tus posiciones abiertas actualmente (inversiones que aún no has vendido completamente). 
-                Los cálculos utilizan el método FIFO (First In, First Out) para determinar qué cantidad de cada activo permanece sin vender.
-              </p>
-              
-              <div style={{marginBottom: '0.75rem'}}>
-                <p className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6', marginBottom: '0.25rem'}}>
-                  <strong style={{color: 'var(--hf-accent-blue)'}}>Fuentes de precios:</strong>
-                </p>
-                <ul style={{paddingLeft: '1.25rem', marginTop: '0.25rem'}}>
-                  <li className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6'}}>
-                    ✅ <strong>Criptomonedas</strong>: CoinGecko API (BTC, ETH, USDT, etc.)
-                  </li>
-                  <li className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6'}}>
-                    ✅ <strong>Acciones US</strong>: Alpha Vantage API (AAPL, GOOGL, MSFT, etc.)
-                  </li>
-                  <li className="text-sm" style={{color: 'var(--hf-warning)', lineHeight: '1.6'}}>
-                    ⏳ <strong>Cedears y Acciones Argentinas</strong>: Pendiente de implementar (requiere IOL o PPI API)
-                  </li>
-                </ul>
-              </div>
-              
-              <div style={{background: 'rgba(255, 200, 100, 0.1)', border: '1px solid rgba(255, 200, 100, 0.3)', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem'}}>
-                <p className="text-sm" style={{color: 'var(--hf-warning)', lineHeight: '1.6', marginBottom: '0.25rem'}}>
-                  <strong>⚠️ Importante sobre Cedears:</strong>
-                </p>
-                <p className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6'}}>
-                  Un <strong>Cedear NO es lo mismo</strong> que la acción US original. Los Cedears tienen ratio de conversión 
-                  (ej: 1 Cedear = 0.1 acción US), cotizan en ARS con precio diferente, y tienen spread y comisiones locales. 
-                  <strong style={{color: 'var(--hf-accent-blue)'}}> Por eso se clasifican por separado</strong> y requieren API del mercado argentino.
-                </p>
-              </div>
-              
-              <p className="text-sm" style={{color: 'var(--hf-text-secondary)', lineHeight: '1.6'}}>
-                <strong style={{color: 'var(--hf-accent-blue)'}}>Cálculo del P&L no realizado:</strong>
-                <code style={{background: 'rgba(255,255,255,0.1)', padding: '0.125rem 0.25rem', borderRadius: '4px', marginLeft: '0.25rem'}}>
-                  (Precio Actual - Precio Promedio Compra) × Cantidad Actual
-                </code>
-              </p>
-              
-              {currentPrices.size > 0 && (
-                <p className="text-sm" style={{color: 'var(--hf-success)', marginTop: '0.75rem'}}>
-                  ✅ {currentPrices.size} {currentPrices.size === 1 ? 'precio actualizado' : 'precios actualizados'} (cache de 5 minutos)
-                </p>
               )}
             </div>
           </div>

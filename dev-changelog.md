@@ -4,7 +4,59 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
-**[2025-12-18 - 15:00] Fix DEFINITIVO: Yahoo Finance API sin CORS**
+**[2025-12-18 - 15:30] DECISIÓN: Cancelación completa de Feature 3 (Precios en Tiempo Real)**
+- **Contexto**: 
+  - Feature 3 implementada inicialmente con CoinGecko, Alpha Vantage, Rava API
+  - Múltiples intentos de resolver problemas CORS
+  - Yahoo Finance también implementada pero igual con problemas
+  - App rota con todos los precios mostrando N/D
+- **Decisión final**: **ELIMINAR completamente la feature de precios en tiempo real**
+- **Razones**:
+  1. **Complejidad innecesaria**: HomeFlow es para gestión contable, no trading en vivo
+  2. **APIs problemáticas**: CORS, rate limits, autenticación, mantenimiento
+  3. **Datos especulativos**: P&L no realizado confunde más que ayuda
+  4. **Filosofía incorrecta**: Lo importante es P&L cuando vendes, no el valor actual
+- **Nueva filosofía de HomeFlow**:
+  - ✅ **P&L realizado**: Se calcula SOLO cuando hay venta (compra vs venta)
+  - ✅ **Portfolio simple**: Muestra qué tienes, cuánto invertiste, cuánto queda
+  - ✅ **Matemáticas puras**: Sin APIs externas, sin latencia, sin errores
+  - ✅ **Herramienta contable**: Para impuestos, auditoría, gestión seria
+  - ❌ **NO es trading app**: No necesitas ver precios minuto a minuto
+- **Cambios implementados**:
+  - ❌ Eliminado `src/services/priceService.js` completo (~400 líneas)
+  - ❌ Eliminados imports: `getMultiplePrices`, `clearPriceCache`
+  - ❌ Eliminados estados: `currentPrices`, `pricesLoading`, `pricesError`
+  - ❌ Eliminado useEffect de fetch de precios
+  - ❌ Eliminadas 4 columnas del Portfolio:
+    - Precio Actual
+    - Valor Actual
+    - P&L No Realizado
+    - P&L %
+  - ❌ Eliminadas 2 métricas del resumen:
+    - Valor Actual del Portfolio
+    - P&L No Realizado Total
+  - ❌ Eliminado card informativo sobre fuentes de precios
+  - ✅ Mantenidas 7 columnas esenciales:
+    - Activo, Tipo, Moneda, Cantidad, Precio Prom Compra, Monto Invertido, Usuario
+  - ✅ Mantenidas 3 métricas simples:
+    - Total Invertido, Total Posiciones, Activos Únicos
+- **Beneficios de la simplificación**:
+  - ✅ Código 400 líneas más simple
+  - ✅ Cero dependencias externas
+  - ✅ Cero problemas de CORS
+  - ✅ Carga instantánea (sin HTTP requests)
+  - ✅ 100% confiable (matemáticas puras)
+  - ✅ Menor superficie de bugs
+  - ✅ Fácil de mantener
+- **Próximos pasos**:
+  - El reporte de inversiones ya calcula P&L realizado con FIFO
+  - Usuario verá P&L solo en transacciones completadas (compra→venta)
+  - Portfolio muestra inversiones actuales sin especulación
+- **ROADMAP actualizado**: Feature 3 marcada como ❌ CANCELADO
+
+---
+
+**[2025-12-18 - 15:00] [OBSOLETO - REVERTIDO] Fix DEFINITIVO: Yahoo Finance API sin CORS**
 - **Problema detectado**: 
   - CORS bloqueaba Rava API y Alpha Vantage
   - Proxy CORS (corsproxy.io) también falló
