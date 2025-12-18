@@ -1409,17 +1409,8 @@ const App = () => {
 
             {/* Positions Table */}
             <div className="hf-card">
-              <div className="hf-flex-between" style={{marginBottom: 'var(--hf-space-md)'}}>
+              <div style={{marginBottom: 'var(--hf-space-md)'}}>
                 <h3 className="text-lg font-semibold">📋 Posiciones Actuales</h3>
-                {pricesLoading && (
-                  <div className="hf-flex hf-gap-sm" style={{alignItems: 'center'}}>
-                    <div className="hf-loading" style={{width: '16px', height: '16px'}}></div>
-                    <span className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>Actualizando precios...</span>
-                  </div>
-                )}
-                {pricesError && (
-                  <span className="text-sm" style={{color: 'var(--hf-warning)'}}>⚠️ {pricesError}</span>
-                )}
               </div>
               {portfolioData.posiciones.length === 0 ? (
                 <div className="hf-empty-state">
