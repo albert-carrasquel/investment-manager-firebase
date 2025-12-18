@@ -120,6 +120,9 @@ async function getCryptoPrice(symbol, currency) {
  * Obtiene precio de acción US desde Alpha Vantage API (gratuita - 5 req/min)
  * NOTA: Requiere API key gratuita de https://www.alphavantage.co/support/#api-key
  * IMPORTANTE: Esta función solo se llama para acciones en USD (mercado US)
+ * 
+ * Se usa proxy CORS para evitar bloqueos del navegador
+ * 
  * @param {string} symbol - Símbolo de la acción (AAPL, GOOGL, etc.)
  * @param {string} currency - Moneda (siempre USD para stocks US)
  * @returns {Promise<number|null>} - Precio actual o null si falla
@@ -129,8 +132,14 @@ async function getStockPrice(symbol, currency) {
     // IMPORTANTE: Reemplazar con tu API key de Alpha Vantage
     const API_KEY = 'M45V7OEF494I5Z22'; // Cambiar por tu key real
     
-    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`;
-    console.log(`[PriceService] 📡 Alpha Vantage request: ${symbol} (${currency}) - URL: ${url}`);
+    const alphaUrl = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`;
+    
+    // Proxy CORS para evitar bloqueo del navegador
+    const CORS_PROXY = 'https://corsproxy.io/?';
+    const url = `${CORS_PROXY}${encodeURIComponent(alphaUrl)}`;
+    
+    console.log(`[PriceService] 📡 Alpha Vantage request: ${symbol} (${currency})`);
+    console.log(`[PriceService]    URL: ${alphaUrl} (via CORS proxy)`);
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -176,7 +185,7 @@ async function getStockPrice(symbol, currency) {
 
 /**
  * Obtiene precio de activo argentino (Cedears, Bonos, Acciones locales)
- * Utiliza la API pública de Rava Bursátil
+ * Utiliza la API pública de Rava Bursátil a través de proxy CORS
  * 
  * IMPORTANTE sobre CEDEARS:
  * - Un Cedear NO es lo mismo que la acción US original
@@ -187,6 +196,7 @@ async function getStockPrice(symbol, currency) {
  * 
  * API utilizada: Rava Bursátil (https://www.rava.com/)
  * - Endpoint: https://api.rava.com.ar/cotizaciones/{ticker}
+ * - Proxy CORS: https://corsproxy.io/ (para evitar bloqueo CORS en navegador)
  * - No requiere autenticación
  * - Cubre: Cedears, Acciones argentinas, Bonos, etc.
  * 
@@ -206,10 +216,15 @@ async function getArgentinaAssetPrice(symbol, currency) {
     `${symbol.toUpperCase()}.BA`    // AAPL.BA (Buenos Aires)
   ];
   
+  // Proxy CORS para evitar bloqueo del navegador
+  const CORS_PROXY = 'https://corsproxy.io/?';
+  
   for (const ticker of variants) {
     try {
-      const url = `https://api.rava.com.ar/cotizaciones/${ticker}`;
-      console.log(`[PriceService] 📡 Rava request: ${symbol} → probando ${ticker} - URL: ${url}`);
+      const ravaUrl = `https://api.rava.com.ar/cotizaciones/${ticker}`;
+      const url = `${CORS_PROXY}${encodeURIComponent(ravaUrl)}`;
+      console.log(`[PriceService] 📡 Rava request: ${symbol} → probando ${ticker}`);
+      console.log(`[PriceService]    URL: ${ravaUrl} (via CORS proxy)`);
       
       const response = await fetch(url);
       

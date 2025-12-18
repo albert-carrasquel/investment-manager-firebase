@@ -4,6 +4,45 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-18 - 14:45] Fix crítico: CORS proxy para Rava y Alpha Vantage**
+- **Problema detectado**: 
+  - APIs bloqueadas por política CORS del navegador
+  - Error: `Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource`
+  - Afectaba: Rava API (Cedears/Acciones ARG) y Alpha Vantage (Stocks US)
+- **Causa raíz**: 
+  - Las APIs públicas no tienen headers CORS configurados
+  - Navegadores bloquean requests cross-origin por seguridad
+  - Fetch directo desde React → CORS error
+- **Solución implementada**:
+  - **Proxy CORS**: `https://corsproxy.io/` agregado a ambas APIs
+  - **Rava**: `CORS_PROXY + encodeURIComponent(ravaUrl)`
+  - **Alpha Vantage**: `CORS_PROXY + encodeURIComponent(alphaUrl)`
+  - El proxy agrega headers necesarios (`Access-Control-Allow-Origin: *`)
+- **Implementación**:
+  ```javascript
+  const CORS_PROXY = 'https://corsproxy.io/?';
+  const url = `${CORS_PROXY}${encodeURIComponent(originalUrl)}`;
+  ```
+- **Variantes de símbolos para Rava** (loop de intentos):
+  1. `AAPL` → Original
+  2. `AAPL.D` → Cedears (sufijo Dolares)
+  3. `AAPLD` → Variante sin punto
+  4. `AAPL.BA` → Buenos Aires
+- **Logs mejorados**:
+  - Request: `📡 Rava request: NVDA → probando NVDA.D`
+  - Success: `✅ Rava: NVDA (NVDA.D) = 12345.00 ARS`
+  - Error: `❌ Rava: no se encontró precio después de probar 4 variantes`
+- **Testing esperado**:
+  - Cedears: NVDA, INTC, YPF → deberían mostrar precios
+  - Acciones US: AAPL, AMD, BITF → deberían mostrar precios
+  - Acciones ARG: GGAL, APPL (typo), BITF → deberían mostrar precios
+- **Alternativa si falla proxy**:
+  - Backend proxy propio (Node/Express)
+  - Firebase Functions como proxy
+  - APIs alternativas sin CORS (CoinMarketCap, etc.)
+
+---
+
 **[2025-12-18 - 10:30] Feature: Integración API Rava Bursátil para mercado argentino**
 - **Objetivo**: Obtener precios en tiempo real de Cedears y Acciones argentinas
 - **API implementada**: Rava Bursátil (https://www.rava.com/)
