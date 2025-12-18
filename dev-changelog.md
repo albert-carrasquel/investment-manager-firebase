@@ -4,6 +4,58 @@ Este archivo registra todos los cambios realizados en la etapa de desarrollo ini
 
 ---
 
+**[2025-12-18 - 16:45] FEATURE 4 COMPLETADA: Gráficos y Visualizaciones con Recharts**
+- **Contexto**: Después de simplificar la app eliminando Feature 3, ahora agregamos visualizaciones para mejorar UX
+- **Implementación**:
+  1. **Instalación**: `npm install recharts` (156 packages agregados)
+  2. **Portfolio - Gráficos de Torta**:
+     - Diversificación por Tipo: PieChart con datos porTipo
+     - Diversificación por Moneda: PieChart con datos porMoneda
+     - Labels automáticos mostrando porcentaje
+     - Colores: verde (#10b981), azul (#3b82f6), naranja, rojo, morado
+     - Mantiene tabla detallada debajo de cada gráfico
+  3. **Dashboard - Gráfico de Barras Mensual**:
+     - Nuevo cálculo: `monthlyTrend` en dashboardData (últimos 12 meses)
+     - BarChart con ingresos (verde) vs gastos (rojo)
+     - CartesianGrid, XAxis con meses, YAxis con montos
+     - Tooltip formateado con formatCurrency
+  4. **Reportes Inversiones - Gráfico de Barras P&L**:
+     - BarChart mostrando P&L por activo (top 10)
+     - Datos de investmentReport.porActivo
+     - Barra verde para P&L neto
+- **Componentes Recharts usados**:
+  - PieChart, Pie, Cell (tortas)
+  - BarChart, Bar (barras)
+  - LineChart, Line (preparado para futuro)
+  - ResponsiveContainer (adapta a viewport)
+  - CartesianGrid, XAxis, YAxis
+  - Tooltip, Legend
+- **Beneficios**:
+  - ✅ Visualización clara de diversificación
+  - ✅ Tendencias de cashflow visibles de un vistazo
+  - ✅ Comparación visual de P&L entre activos
+  - ✅ UI más profesional y moderna
+  - ✅ Responsive (se adapta a pantalla)
+- **Archivos modificados**:
+  - App.jsx: +imports recharts, +gráficos en Portfolio/Dashboard/Reportes, +cálculo monthlyTrend
+  - package.json: +recharts dependency
+- **Decisión de Stack**: Recharts elegido por ser más React-friendly y declarativo
+- **Commit**: (pendiente)
+
+---
+
+**[2025-12-18 - 16:10] FIX: Eliminar referencias a estados de precios eliminados**
+- **Problema**: Después de eliminar Feature 3, quedaron referencias a `pricesLoading` y `pricesError` en el JSX del Portfolio
+- **Error detectado**: `Uncaught ReferenceError: pricesLoading is not defined`
+- **Cambios**:
+  - Eliminado bloque completo en App.jsx línea 1414 que mostraba estado de carga de precios
+  - Eliminadas referencias a `pricesLoading` (spinner de carga)
+  - Eliminadas referencias a `pricesError` (mensaje de error)
+- **Resultado**: Portfolio funciona correctamente sin errores, muestra las 7 columnas simplificadas
+- **Commit**: `439ebee` - fix: eliminar referencias a pricesLoading/pricesError en Portfolio
+
+---
+
 **[2025-12-18 - 15:30] DECISIÓN: Cancelación completa de Feature 3 (Precios en Tiempo Real)**
 - **Contexto**: 
   - Feature 3 implementada inicialmente con CoinGecko, Alpha Vantage, Rava API

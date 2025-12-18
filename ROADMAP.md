@@ -86,15 +86,25 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ---
 
-### 4. Gráficos y Visualizaciones ⭐⭐⭐⭐
-**Estado**: ⏳ PENDIENTE
+### ✅ 4. Gráficos y Visualizaciones ⭐⭐⭐⭐
+**Estado**: ✅ COMPLETADO
 **Problema**: Solo tablas, difícil entender tendencias.
-**Solución** (con `recharts` o `chart.js`):
-- [ ] Cashflow: Gráfico de barras mes a mes (ingresos vs gastos)
-- [ ] Inversiones: Evolución del capital invertido en el tiempo
-- [ ] P&L: Línea temporal del rendimiento acumulado
-- [ ] Composición de portfolio: Gráfico de torta
-**Estimación**: 2-3 días
+**Solución**: Implementación con `recharts`:
+- [x] Portfolio: Gráficos de torta para diversificación (por tipo y por moneda)
+- [x] Dashboard: Gráfico de barras del cashflow mensual (últimos 12 meses)
+- [x] Reportes Inversiones: Gráfico de barras del P&L por activo
+**Fecha inicio**: 2025-12-18 16:15
+**Fecha fin**: 2025-12-18 16:45
+**Implementación**:
+- Instalación de librería: `recharts` (156 packages)
+- Componentes utilizados: PieChart, BarChart, ResponsiveContainer, Tooltip, Legend
+- Portfolio: 2 gráficos de torta (tipo y moneda) con datos ya calculados
+- Dashboard: Gráfico de barras con datos mensuales calculados (últimos 12 meses)
+  - Nuevo cálculo: `monthlyTrend` en dashboardData
+  - Muestra ingresos (verde) vs gastos (rojo) mes a mes
+- Reportes: Gráfico de barras con P&L por activo (top 10)
+- Paleta de colores: #10b981 (verde), #3b82f6 (azul), #f59e0b (naranja), #ef4444 (rojo), #8b5cf6 (morado)
+**Decisión de Stack**: Recharts (más React-friendly, componentes declarativos)
 
 ---
 
@@ -231,17 +241,11 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 ## 📝 **NOTAS Y DECISIONES**
 
 ### Decisión de Stack para Gráficos
-- **Opción 1**: Recharts (más React-friendly, componentes declarativos)
+- **Opción 1**: Recharts (más React-friendly, componentes declarativos) ✅ ELEGIDO
 - **Opción 2**: Chart.js (más ligero, más control)
-- **Decisión**: TBD según complejidad de gráficos necesarios
-
-### Decisión de API de Precios
-- **Crypto**: CoinGecko API (gratuita, 50 req/min)
-- **Stocks US**: Alpha Vantage (gratuita, 5 req/min, 500/día)
-- **Mercado ARG**: IOL API o scraping de bolsar.com
-- **Decisión**: TBD según disponibilidad y rate limits
+- **Decisión**: Recharts implementado en Feature 4 - perfecto para casos de uso de HomeFlow
 
 ---
 
-**Última actualización**: 2025-12-17
+**Última actualización**: 2025-12-18
 **Próxima revisión**: Después de implementar Dashboard

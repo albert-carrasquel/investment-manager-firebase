@@ -23,6 +23,7 @@ import logo from './assets/logo.png';
 import ConfirmationModal from './components/ConfirmationModal';
 import { formatCurrency, sanitizeDecimal, sanitizeActivo, sanitizeNombre, getUniqueActivos, dateStringToTimestamp, getOccurredAtFromDoc } from './utils/formatters';
 import { calculateInvestmentReport } from './utils/reporting';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
 
 // --- CONFIGURACIÓN GLOBAL ---
 
@@ -454,6 +455,34 @@ const App = () => {
           }
         });
 
+        // 6. Calculate cashflow for last 12 months (for bar chart)
+        const monthlyData = [];
+        for (let i = 11; i >= 0; i--) {
+          const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+          const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
+          
+          const monthLabel = monthDate.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+          
+          const monthCFs = allCashflows.filter((cf) => {
+            if (cf.anulada) return false;
+            const cfDate = cf.occurredAt?.toDate ? cf.occurredAt.toDate() : 
+                          cf.fechaOperacion?.toDate ? cf.fechaOperacion.toDate() : null;
+            if (!cfDate) return false;
+            return cfDate >= monthStart && cfDate <= monthEnd;
+          });
+          
+          const ingresos = monthCFs.filter(cf => cf.tipo === 'ingreso').reduce((sum, cf) => sum + (cf.monto || 0), 0);
+          const gastos = monthCFs.filter(cf => cf.tipo === 'gasto').reduce((sum, cf) => sum + (cf.monto || 0), 0);
+          
+          monthlyData.push({
+            mes: monthLabel,
+            ingresos,
+            gastos,
+            neto: ingresos - gastos
+          });
+        }
+
         setDashboardData({
           investments: {
             totalInvertido: pnlReport.resumenGlobal.totalInvertido,
@@ -478,6 +507,7 @@ const App = () => {
             }))
             .sort((a, b) => Math.abs(b.gastos) - Math.abs(a.gastos))
             .slice(0, 5),
+          monthlyTrend: monthlyData,
         });
       } catch (error) {
         console.error('Error calculating dashboard:', error);
@@ -1204,6 +1234,25 @@ const App = () => {
               </div>
             </div>
 
+            {/* Monthly Cashflow Trend */}
+            <div className="hf-card" style={{marginBottom: 'var(--hf-space-lg)'}}>
+              <h3 className="text-lg font-semibold mb-4">📊 Tendencia Mensual (Últimos 12 meses)</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={dashboardData.monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(value, 'ARS')}
+                    contentStyle={{ backgroundColor: 'var(--hf-bg-card)', border: '1px solid var(--hf-border)' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="ingresos" fill="#10b981" name="Ingresos" />
+                  <Bar dataKey="gastos" fill="#ef4444" name="Gastos" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
             {/* Two Column Layout */}
             <div className="hf-grid-2" style={{gap: 'var(--hf-space-lg)', alignItems: 'start'}}>
               {/* Top 5 Performing Assets */}
@@ -1352,26 +1401,46 @@ const App = () => {
                     <p>No hay datos de diversificación</p>
                   </div>
                 ) : (
-                  <div className="hf-list">
-                    {portfolioData.porTipo.map((item, idx) => (
-                      <div key={idx} className="hf-list-item hf-flex-between">
-                        <div>
-                          <div className="font-bold">{item.tipo}</div>
-                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
-                            {item.cantidad} {item.cantidad === 1 ? 'posición' : 'posiciones'}
+                  <>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={portfolioData.porTipo}
+                          dataKey="porcentaje"
+                          nameKey="tipo"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={({tipo, porcentaje}) => `${tipo}: ${porcentaje.toFixed(1)}%`}
+                        >
+                          {portfolioData.porTipo.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="hf-list" style={{marginTop: 'var(--hf-space-md)'}}>
+                      {portfolioData.porTipo.map((item, idx) => (
+                        <div key={idx} className="hf-list-item hf-flex-between">
+                          <div>
+                            <div className="font-bold">{item.tipo}</div>
+                            <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                              {item.cantidad} {item.cantidad === 1 ? 'posición' : 'posiciones'}
+                            </div>
+                          </div>
+                          <div style={{textAlign: 'right'}}>
+                            <div className="hf-metric-value-positive" style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
+                              {item.porcentaje.toFixed(1)}%
+                            </div>
+                            <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                              {formatCurrency(item.montoInvertido, 'ARS')}
+                            </div>
                           </div>
                         </div>
-                        <div style={{textAlign: 'right'}}>
-                          <div className="hf-metric-value-positive" style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
-                            {item.porcentaje.toFixed(1)}%
-                          </div>
-                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
-                            {formatCurrency(item.montoInvertido, 'ARS')}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1383,26 +1452,46 @@ const App = () => {
                     <p>No hay datos de diversificación</p>
                   </div>
                 ) : (
-                  <div className="hf-list">
-                    {portfolioData.porMoneda.map((item, idx) => (
-                      <div key={idx} className="hf-list-item hf-flex-between">
-                        <div>
-                          <div className="font-bold">{item.moneda}</div>
-                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
-                            {item.cantidad} {item.cantidad === 1 ? 'posición' : 'posiciones'}
+                  <>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={portfolioData.porMoneda}
+                          dataKey="porcentaje"
+                          nameKey="moneda"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={({moneda, porcentaje}) => `${moneda}: ${porcentaje.toFixed(1)}%`}
+                        >
+                          {portfolioData.porMoneda.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6'][index % 2]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="hf-list" style={{marginTop: 'var(--hf-space-md)'}}>
+                      {portfolioData.porMoneda.map((item, idx) => (
+                        <div key={idx} className="hf-list-item hf-flex-between">
+                          <div>
+                            <div className="font-bold">{item.moneda}</div>
+                            <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                              {item.cantidad} {item.cantidad === 1 ? 'posición' : 'posiciones'}
+                            </div>
+                          </div>
+                          <div style={{textAlign: 'right'}}>
+                            <div className="hf-metric-value-positive" style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
+                              {item.porcentaje.toFixed(1)}%
+                            </div>
+                            <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
+                              {formatCurrency(item.montoInvertido, item.moneda)}
+                            </div>
                           </div>
                         </div>
-                        <div style={{textAlign: 'right'}}>
-                          <div className="hf-metric-value-positive" style={{fontSize: '1.25rem', fontWeight: 'bold'}}>
-                            {item.porcentaje.toFixed(1)}%
-                          </div>
-                          <div className="text-sm" style={{color: 'var(--hf-text-secondary)'}}>
-                            {formatCurrency(item.montoInvertido, item.moneda)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -2064,6 +2153,26 @@ const App = () => {
                 </>
               )}
             </div>
+
+            {/* Investment P&L Chart */}
+            {reportFilters.tipoDatos === 'inversiones' && investmentReport && investmentReport.porActivo.length > 0 && (
+              <div style={{marginTop: 'var(--hf-space-xl)'}}>
+                <h3 className="text-lg font-semibold mb-4">📊 P&L por Activo</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={investmentReport.porActivo.slice(0, 10)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="activo" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => formatCurrency(value, 'ARS')}
+                      contentStyle={{ backgroundColor: 'var(--hf-bg-card)', border: '1px solid var(--hf-border)' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="pnlNeto" name="P&L Neto" fill="#10b981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             {/* Investment P&L Analysis Table */}
             {reportFilters.tipoDatos === 'inversiones' && investmentReport && investmentReport.porActivo.length > 0 && (
