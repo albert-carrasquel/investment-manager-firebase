@@ -132,32 +132,91 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ---
 
+### ✅ 6. Importador de Transacciones desde IOL ⭐⭐⭐⭐⭐
+**Estado**: ✅ COMPLETADO
+**Problema**: Carga manual de transacciones históricas es muy tedioso (100+ operaciones).
+**Solución**: Importador automático desde archivo Excel de IOL
+- [x] Parser de archivos XLS/XLSX de IOL (formato HTML table)
+- [x] Mapeo automático de 16 columnas IOL → HomeFlow
+- [x] Detección inteligente de tipo de activo
+- [x] UI con preview editable antes de importar
+- [x] Batch insert con progress bar
+- [x] Manejo de errores por transacción
+**Fecha inicio**: 2025-12-22 20:00
+**Fecha fin**: 2025-12-22 21:30
+**Implementación**:
+- Función `parseIOLFile()`: Lee archivo XLS/XLSX con xlsx library
+- Detección automática de tipo de activo basado en campo "Descripción":
+  - CEDEAR → cedear
+  - BONO/BOND → bono
+  - LECAP/LETRA → lecap
+  - ON/OBLIG → on
+  - FCI/FONDO → fci
+  - Default → acción
+- Mapeo de columnas IOL → HomeFlow:
+  - Fecha Transacción → fechaOperacion (formato YYYY-MM-DD)
+  - Tipo Transacción → tipoOperacion (Compra/Venta)
+  - Símbolo → simbolo (uppercase)
+  - Descripción → nombre
+  - Cantidad → cantidad (parseada)
+  - Precio Ponderado → precioUnitario
+  - Total → montoTotal
+  - Comisión y Derecho de Mercado → comisionMonto
+  - Moneda (AR$ → ARS, USD → USD)
+  - Mercado → exchange
+- UI con sub-tabs en sección Inversiones:
+  - ➕ Agregar Transacción (formulario manual)
+  - 📥 Importar desde IOL (importador automático)
+- Steps del importador:
+  1. **Upload**: Selección de archivo
+  2. **Preview**: Vista editable de transacciones parseadas
+  3. **Importing**: Progress bar en tiempo real
+  4. **Done**: Resumen con éxitos y errores
+- Features del preview:
+  - Edición de fecha, tipo de activo y usuario
+  - Eliminación de transacciones individuales
+  - Validación automática
+- Handlers implementados:
+  - `handleFileSelect()`: Procesa archivo y extrae transacciones
+  - `handleImportTransactionChange()`: Edita transacciones en preview
+  - `handleRemoveImportTransaction()`: Elimina transacciones
+  - `handleStartImport()`: Ejecuta batch insert con manejo de errores
+  - `handleResetImport()`: Reinicia el proceso
+**Beneficios**:
+- ✅ Ahorra HORAS de carga manual
+- ✅ Permite cargar histórico completo (100+ transacciones en minutos)
+- ✅ Validación automática de datos
+- ✅ Preview editable para ajustes manuales
+- ✅ Resumen detallado de importación
+
+---
+
 ## 📊 **MEJORAS IMPORTANTES (Media Prioridad)**
 
-### 6. Filtros Avanzados en Portfolio
+### 7. Filtros Avanzados en Portfolio
 **Estado**: ⏳ PENDIENTE
 - [ ] Por rango de fechas de compra
 - [ ] Por rentabilidad (mostrar solo ganadores/perdedores)
 - [ ] Por exchange
 
-### 7. Alertas y Notificaciones
+### 8. Alertas y Notificaciones
 **Estado**: ⏳ PENDIENTE
 - [ ] Recordatorio de dividendos/cupones
 - [ ] Alertas de precio (si activo sube/baja X%)
 - [ ] Resumen mensual automático
 
-### 8. Análisis por Período Fiscal
+### 9. Análisis por Período Fiscal
 **Estado**: ⏳ PENDIENTE
 - [ ] Vista anual para declaración de impuestos
 - [ ] Separación de ganancias de capital vs dividendos
 - [ ] Cálculo automático de impuestos (configurable por país)
 
-### 9. Búsqueda y Filtrado Rápido
+### 10. Búsqueda y Filtrado Rápido
 **Estado**: ⏳ PENDIENTE
 - [ ] Barra de búsqueda global (por activo, descripción, monto)
 - [ ] Filtros persistentes (guardar búsquedas favoritas)
 
-### 10. Transacciones Recurrentes
+### 11. Transacciones Recurrentes
 **Estado**: ⏳ PENDIENTE
 - [ ] Template para gastos fijos (alquiler, servicios)
 - [ ] Programar ingresos mensuales (sueldo)
@@ -167,25 +226,25 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ## 🔧 **MEJORAS TÉCNICAS (Media-Baja Prioridad)**
 
-### 11. Performance y Escalabilidad
+### 12. Performance y Escalabilidad
 **Estado**: ⏳ PENDIENTE
 - [ ] Paginación en reportes (si tienes >1000 transacciones)
 - [ ] Índices compuestos en Firestore para queries frecuentes
 - [ ] Lazy loading de datos históricos
 
-### 12. Modo Offline
+### 13. Modo Offline
 **Estado**: ⏳ PENDIENTE
 - [ ] Service Worker para PWA
 - [ ] Guardar datos localmente con IndexedDB
 - [ ] Sincronizar cuando vuelve conexión
 
-### 13. Seguridad Mejorada
+### 14. Seguridad Mejorada
 **Estado**: ⏳ PENDIENTE
 - [ ] Audit log completo (quién modificó qué y cuándo)
 - [ ] Backup automático mensual
 - [ ] Encriptación de datos sensibles
 
-### 14. Testing
+### 15. Testing
 **Estado**: ⏳ PENDIENTE
 - [ ] Tests unitarios del engine FIFO (`reporting.js`)
 - [ ] Tests de integración para flows críticos
@@ -195,34 +254,34 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ## 💡 **FEATURES AVANZADAS (Baja Prioridad - "Nice to Have")**
 
-### 15. Comparación de Performance
+### 16. Comparación de Performance
 **Estado**: ⏳ PENDIENTE
 - [ ] Benchmark contra índices (S&P500, MERVAL, Bitcoin)
 - [ ] Calculadora de "¿Qué hubiera pasado si...?"
 
-### 16. Gestión de Múltiples Carteras
+### 17. Gestión de Múltiples Carteras
 **Estado**: ⏳ PENDIENTE
 - [ ] Separar portfolio personal vs inversión de largo plazo
 - [ ] Vista consolidada y por cartera individual
 
-### 17. Integración Bancaria
+### 18. Integración Bancaria
 **Estado**: ⏳ PENDIENTE
 - [ ] Importar movimientos desde CSV de bancos
 - [ ] Parsers para extractos comunes (Santander, Galicia, etc.)
 
-### 18. Análisis de Riesgo
+### 19. Análisis de Riesgo
 **Estado**: ⏳ PENDIENTE
 - [ ] Volatilidad del portfolio
 - [ ] Sharpe Ratio, Max Drawdown
 - [ ] Correlación entre activos
 
-### 19. Modo Multi-Usuario Mejorado
+### 20. Modo Multi-Usuario Mejorado
 **Estado**: ⏳ PENDIENTE
 - [ ] Permisos granulares (admin, viewer, editor)
 - [ ] Vista familiar consolidada
 - [ ] Chat/comentarios en transacciones
 
-### 20. Integraciones con Exchanges
+### 21. Integraciones con Exchanges
 **Estado**: ⏳ PENDIENTE
 - [ ] Importar trades automáticamente desde Binance API
 - [ ] Sincronización en tiempo real
@@ -243,8 +302,8 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ## 📈 **MÉTRICAS DE ÉXITO**
 
-- [ ] Tiempo de carga inicial < 2 segundos
-- [ ] 100% de features críticas implementadas
+- [x] Tiempo de carga inicial < 2 segundos
+- [x] 100% de features críticas implementadas (6/6)
 - [ ] 0 errores en consola de producción
 - [ ] Cobertura de tests > 70%
 - [ ] Lighthouse score > 90
@@ -258,7 +317,12 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 - **Opción 2**: Chart.js (más ligero, más control)
 - **Decisión**: Recharts implementado en Feature 4 - perfecto para casos de uso de HomeFlow
 
+### Decisión de Importador IOL
+- **Formato**: Excel (XLS/XLSX) con HTML table embebido ✅ VIABLE
+- **Alternativa descartada**: PDF de boletos (complejidad muy alta, parsing no confiable)
+- **Decisión**: Implementado parser con xlsx library - perfecto para formato estructurado de IOL
+
 ---
 
-**Última actualización**: 2025-12-18
-**Próxima revisión**: Después de implementar Dashboard
+**Última actualización**: 2025-12-22
+**Próxima revisión**: Después de testing con datos reales de producción
