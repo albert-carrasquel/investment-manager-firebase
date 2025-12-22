@@ -276,25 +276,29 @@ const parseIOLFile = async (file) => {
           if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
           
           // Parser de números IOL:
-          // - CEDEARS/ACCIONES: Todos los números tienen 2 decimales implícitos
-          // - BONOS/LECAPS: Cantidad y Total tienen 2 decimales implícitos, pero Precio NO (es % del VN)
-          const parseIOLNumber = (str, hasImplicitDecimals = false) => {
+          // CEDEARS/ACCIONES:
+          //   - Cantidad: 4 decimales implícitos (÷10000) → 70000 = 7.0000 cedears
+          //   - Precio: 2 decimales implícitos (÷100) → 241100 = $2,411.00
+          //   - Total: 2 decimales implícitos (÷100) → 1699340 = $16,993.40
+          // BONOS/LECAPS:
+          //   - Cantidad (VN): 2 decimales implícitos (÷100) → 71620000 = $716,200 VN
+          //   - Precio: SIN decimales (es % del VN) → 181450 = 181.450%
+          //   - Total: 2 decimales implícitos (÷100) → 13061726 = $130,617.26
+          
+          const parseIOLNumber = (str, decimals = 0) => {
             if (!str) return 0;
             const numStr = String(str).trim();
             if (numStr === '' || numStr === '0') return 0;
             
             const num = parseFloat(numStr) || 0;
             
-            // Si tiene decimales implícitos, dividir por 100
-            if (hasImplicitDecimals) {
-              return num / 100;
-            }
-            
+            // Dividir según cantidad de decimales implícitos
+            if (decimals === 4) return num / 10000;
+            if (decimals === 2) return num / 100;
             return num;
           };
           
-          // Determinar si el precio debe dividirse por 100
-          // Para bonos/LECAPs, el precio es un porcentaje del VN y NO tiene decimales implícitos
+          // Determinar formato según tipo de activo
           const esRentaFija = (tipoActivo === 'bono' || tipoActivo === 'lecap' || tipoActivo === 'on');
           
           // Log de debug para primera transacción
@@ -303,10 +307,10 @@ const parseIOLFile = async (file) => {
             console.log('  - Tipo activo:', tipoActivo, '- Es renta fija:', esRentaFija);
             console.log('  - Fecha raw:', row[0], '→ parseada:', fechaOperacion);
             console.log('  - Símbolo:', row[8]);
-            console.log('  - Cantidad raw:', row[9], '→ parseada:', parseIOLNumber(row[9], true));
-            console.log('  - Precio raw:', row[11], '→ parseado:', parseIOLNumber(row[11], !esRentaFija));
-            console.log('  - Total raw:', row[15], '→ parseado:', parseIOLNumber(row[15], true));
-            console.log('  - Comisión raw:', row[13], '→ parseada:', parseIOLNumber(row[13], true));
+            console.log('  - Cantidad raw:', row[9], '→ parseada:', parseIOLNumber(row[9], esRentaFija ? 2 : 4));
+            console.log('  - Precio raw:', row[11], '→ parseado:', parseIOLNumber(row[11], esRentaFija ? 0 : 2));
+            console.log('  - Total raw:', row[15], '→ parseado:', parseIOLNumber(row[15], 2));
+            console.log('  - Comisión raw:', row[13], '→ parseada:', parseIOLNumber(row[13], 2));
           }
           
           const transaction = {
@@ -319,17 +323,14 @@ const parseIOLFile = async (file) => {
             tipoOperacion: tipoOperacion,
             fechaOperacion: fechaOperacion,
             
-            // Cantidades y precios
-            // Cantidad: siempre dividir por 100 (VN en centavos o cantidad de cedears/acciones)
-            // Precio: dividir por 100 SOLO si NO es renta fija (bonos/LECAPs usan % del VN)
-            // Total: siempre dividir por 100
-            cantidad: parseIOLNumber(row[9], true),
-            precioUnitario: parseIOLNumber(row[11], !esRentaFija),  // NO dividir si es bono/LECAP
-            montoTotal: Math.abs(parseIOLNumber(row[15], true)),
+            // Cantidades y precios según tipo de instrumento
+            cantidad: parseIOLNumber(row[9], esRentaFija ? 2 : 4),  // Cedears: 4 decimales, Bonos: 2 decimales
+            precioUnitario: parseIOLNumber(row[11], esRentaFija ? 0 : 2),  // Bonos: sin decimales, Cedears: 2 decimales
+            montoTotal: Math.abs(parseIOLNumber(row[15], 2)),  // Siempre 2 decimales
             moneda: moneda,
             
-            // Comisiones (con 2 decimales implícitos)
-            comisionMonto: parseIOLNumber(row[13], true),
+            // Comisiones (siempre 2 decimales implícitos)
+            comisionMonto: parseIOLNumber(row[13], 2),
             comisionMoneda: moneda,
             
             // Metadata
