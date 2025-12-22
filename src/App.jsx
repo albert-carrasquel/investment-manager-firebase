@@ -515,6 +515,8 @@ const App = () => {
   // Investment P&L report state
   const [investmentReport, setInvestmentReport] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState({ type: '', message: '' });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [docToDelete, setDocToDelete] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(!!DEV_BYPASS_AUTH);
@@ -1072,9 +1074,7 @@ const App = () => {
       const transactionsPath = getTransactionsCollectionPath(appId);
       await addDoc(collection(db, transactionsPath), transactionToSave);
 
-      setSuccessMessage('✅ Transacción guardada correctamente');
-      setTimeout(() => setSuccessMessage(null), 2500);
-
+      // Clear form first
       setNewTransaction({
         tipoOperacion: 'compra',
         activo: '',
@@ -1092,6 +1092,14 @@ const App = () => {
         fechaTransaccion: '',
       });
       setFieldErrors({});
+
+      // Show success modal
+      setSuccessModalData({
+        type: 'inversion',
+        message: `Transacción de ${newTransaction.tipoOperacion} registrada correctamente`
+      });
+      setShowSuccessModal(true);
+
     } catch (e) {
       console.error('Error adding transaction: ', e);
       setError('Error al agregar la transacción. Revisa las reglas de seguridad de Firestore.');
@@ -1325,10 +1333,18 @@ const App = () => {
     try {
       const cashflowPath = getCashflowCollectionPath(appId);
       await addDoc(collection(db, cashflowPath), cashflowToSave);
-      setSuccessMessage('✅ Registro guardado');
-      setTimeout(() => setSuccessMessage(null), 2000);
-      setNewCashflow({ tipo: 'gasto', monto: '', moneda: '', fechaOperacion: '', categoria: '', descripcion: '' });
+      
+      // Clear form first
+      setNewCashflow({ tipo: 'gasto', monto: '', usuarioId: '', moneda: '', fechaOperacion: '', categoria: '', descripcion: '' });
       setCashflowFieldErrors({});
+      
+      // Show success modal
+      setSuccessModalData({
+        type: 'cashflow',
+        message: `${newCashflow.tipo === 'gasto' ? 'Gasto' : 'Ingreso'} registrado correctamente`
+      });
+      setShowSuccessModal(true);
+      
     } catch (err) {
       console.error('Error adding cashflow: ', err);
       setError('Error al guardar registro de gasto/ingreso. Revisa reglas de Firestore.');
@@ -2131,12 +2147,6 @@ const App = () => {
           <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
             <h2 className="text-2xl font-bold mb-6 hf-text-gradient text-center">Agregar nueva transacción</h2>
 
-          {successMessage && (
-            <div className="hf-alert hf-alert-success">
-              {successMessage}
-            </div>
-          )}
-
           {/* Ahora mostramos errores inline por campo en lugar de un mensaje global */}
           <form onSubmit={handleAddTransaction} className="hf-form">
             <div className="hf-grid-2">
@@ -2592,12 +2602,6 @@ const App = () => {
         </div>
         <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
           <h2 className="text-xl font-bold mb-4 hf-text-gradient text-center">Registrar Gasto / Ingreso</h2>
-
-          {successMessage && (
-            <div className="hf-alert hf-alert-success">
-              {successMessage}
-            </div>
-          )}
 
           <form onSubmit={handleAddCashflow} className="hf-form">
             <div className="hf-grid-2">
@@ -3125,6 +3129,32 @@ const App = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Éxito */}
+      {showSuccessModal && (
+        <div className="hf-modal-overlay" onClick={() => setShowSuccessModal(false)}>
+          <div className="hf-modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{textAlign: 'center', marginBottom: '1.5rem'}}>
+              <div style={{fontSize: '4rem', marginBottom: '1rem'}}>✅</div>
+              <h3 className="text-xl font-bold mb-2" style={{color: 'var(--hf-success)'}}>
+                ¡Operación Exitosa!
+              </h3>
+              <p style={{color: 'var(--hf-text-secondary)', fontSize: '1rem'}}>
+                {successModalData.message}
+              </p>
+            </div>
+            <div style={{display: 'flex', justifyContent: 'center'}}>
+              <button 
+                onClick={() => setShowSuccessModal(false)} 
+                className="hf-button hf-button-primary"
+                style={{padding: '0.75rem 2rem'}}
+              >
+                Aceptar
+              </button>
+            </div>
           </div>
         </div>
       )}
