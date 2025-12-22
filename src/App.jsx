@@ -170,17 +170,38 @@ const parseIOLFile = async (file) => {
         // Convertir a JSON (array de arrays)
         const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
         
-        // Buscar header row (contiene "Fecha Transacción")
+        console.log('📊 Primeras 10 filas del archivo:', rawData.slice(0, 10));
+        
+        // Buscar header row de forma más flexible
+        // Buscamos una fila que contenga varias palabras clave del header IOL
         let headerRowIndex = -1;
-        for (let i = 0; i < rawData.length; i++) {
-          if (rawData[i] && rawData[i][0] && rawData[i][0].includes('Fecha Transacción')) {
+        const headerKeywords = ['fecha', 'boleto', 'mercado', 'transacci', 'especie', 'símbolo', 'simbolo', 'cantidad', 'moneda'];
+        
+        for (let i = 0; i < Math.min(rawData.length, 20); i++) {
+          if (!rawData[i]) continue;
+          
+          // Convertir toda la fila a texto minúscula
+          const rowText = rawData[i].join(' ').toLowerCase();
+          
+          // Contar cuántas keywords están presentes
+          let keywordCount = 0;
+          for (const keyword of headerKeywords) {
+            if (rowText.includes(keyword)) {
+              keywordCount++;
+            }
+          }
+          
+          // Si encontramos al menos 4 keywords, es probablemente el header
+          if (keywordCount >= 4) {
             headerRowIndex = i;
+            console.log('✅ Header encontrado en fila', i, ':', rawData[i]);
             break;
           }
         }
         
         if (headerRowIndex === -1) {
-          throw new Error('No se encontró el header en el archivo IOL');
+          console.error('❌ No se encontró header. Primeras 20 filas:', rawData.slice(0, 20));
+          throw new Error('No se encontró el header en el archivo IOL. Asegúrate de exportar el archivo con el formato correcto desde InvertirOnline.');
         }
         
         // Parsear transacciones (todo lo que viene después del header)
@@ -189,10 +210,10 @@ const parseIOLFile = async (file) => {
           const row = rawData[i];
           
           // Skip empty rows
-          if (!row || !row[0] || row[0].trim() === '') continue;
+          if (!row || !row[0] || String(row[0]).trim() === '') continue;
           
           // Detectar tipo de activo basado en Descripción
-          const descripcion = (row[6] || '').toUpperCase();
+          const descripcion = String(row[6] || '').toUpperCase();
           let tipoActivo = 'accion';
           if (descripcion.includes('CEDEAR')) tipoActivo = 'cedear';
           else if (descripcion.includes('BONO') || descripcion.includes('BOND')) tipoActivo = 'bono';
@@ -201,7 +222,7 @@ const parseIOLFile = async (file) => {
           else if (descripcion.includes('FCI') || descripcion.includes('FONDO')) tipoActivo = 'fci';
           
           // Mapear moneda (AR$ → ARS)
-          const monedaRaw = (row[10] || '').trim();
+          const monedaRaw = String(row[10] || '').trim();
           let moneda = 'ARS';
           if (monedaRaw === 'AR$' || monedaRaw === 'ARS' || monedaRaw === 'Pesos') moneda = 'ARS';
           else if (monedaRaw === 'USD' || monedaRaw === 'U$S' || monedaRaw === 'Dolares') moneda = 'USD';
@@ -209,7 +230,7 @@ const parseIOLFile = async (file) => {
           // Parsear fecha (formato "18/2/2025 11:34:47" → "2025-02-18")
           let fechaOperacion = '';
           try {
-            const fechaRaw = (row[0] || '').trim();
+            const fechaRaw = String(row[0] || '').trim();
             if (fechaRaw) {
               const [datePart] = fechaRaw.split(' ');
               const [day, month, year] = datePart.split('/');
@@ -220,7 +241,7 @@ const parseIOLFile = async (file) => {
           }
           
           // Determinar tipo de operación
-          const tipoRaw = (row[4] || '').toLowerCase();
+          const tipoRaw = String(row[4] || '').toLowerCase();
           let tipoOperacion = 'compra';
           if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
           
