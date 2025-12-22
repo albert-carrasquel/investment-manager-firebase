@@ -309,7 +309,8 @@ const parseIOLFile = async (file) => {
             console.log('  - Símbolo:', row[8]);
             console.log('  - Cantidad raw:', row[9], '→ parseada:', parseIOLNumber(row[9], esRentaFija ? 2 : 4));
             console.log('  - Precio raw:', row[11], '→ parseado:', parseIOLNumber(row[11], esRentaFija ? 0 : 2));
-            console.log('  - Total raw:', row[15], '→ parseado:', parseIOLNumber(row[15], 2));
+            console.log('  - Monto (col 12):', row[12], '→ parseado:', parseIOLNumber(row[12], 2));
+            console.log('  - Total con comisión (col 15):', row[15], '→ parseado:', parseIOLNumber(row[15], 2));
             console.log('  - Comisión raw:', row[13], '→ parseada:', parseIOLNumber(row[13], 2));
           }
           
@@ -326,7 +327,7 @@ const parseIOLFile = async (file) => {
             // Cantidades y precios según tipo de instrumento
             cantidad: parseIOLNumber(row[9], esRentaFija ? 2 : 4),  // Cedears: 4 decimales, Bonos: 2 decimales
             precioUnitario: parseIOLNumber(row[11], esRentaFija ? 0 : 2),  // Bonos: sin decimales, Cedears: 2 decimales
-            montoTotal: Math.abs(parseIOLNumber(row[15], 2)),  // Siempre 2 decimales
+            montoTotal: Math.abs(parseIOLNumber(row[12], 2)),  // Columna 12 (Monto sin comisión)
             moneda: moneda,
             
             // Comisiones (siempre 2 decimales implícitos)
