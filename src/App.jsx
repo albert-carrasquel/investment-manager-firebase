@@ -275,24 +275,33 @@ const parseIOLFile = async (file) => {
           let tipoOperacion = 'compra';
           if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
           
-          // Parsear números (formato argentino: punto = separador de miles, coma = decimal)
-          // Ejemplo: "16.877,50" → 16877.50
-          const parseNumber = (str) => {
+          // Parser de números IOL:
+          // IOL exporta números SIN separadores y con 2 decimales implícitos en los montos
+          // Ejemplo: "181450" = $1814.50, "71620000" cantidad nominal = 716200.00 VN
+          const parseIOLNumber = (str, hasImplicitDecimals = false) => {
             if (!str) return 0;
-            const cleaned = String(str)
-              .replace(/\./g, '')      // Remover separador de miles (punto)
-              .replace(',', '.');      // Convertir decimal (coma) a punto
-            return parseFloat(cleaned) || 0;
+            const numStr = String(str).trim();
+            if (numStr === '' || numStr === '0') return 0;
+            
+            const num = parseFloat(numStr) || 0;
+            
+            // Si tiene decimales implícitos (precios y montos), dividir por 100
+            if (hasImplicitDecimals) {
+              return num / 100;
+            }
+            
+            return num;
           };
           
           // Log de debug para primera transacción
           if (transactions.length === 0) {
             console.log('🔍 DEBUG - Primera transacción:');
             console.log('  - Fecha raw:', row[0], '→ parseada:', fechaOperacion);
-            console.log('  - Cantidad raw:', row[9], '→ parseada:', parseNumber(row[9]));
-            console.log('  - Precio raw:', row[11], '→ parseado:', parseNumber(row[11]));
-            console.log('  - Monto raw:', row[15], '→ parseado:', parseNumber(row[15]));
-            console.log('  - Comisión raw:', row[13], '→ parseada:', parseNumber(row[13]));
+            console.log('  - Símbolo:', row[8]);
+            console.log('  - Cantidad raw:', row[9], '→ parseada:', parseIOLNumber(row[9], true));
+            console.log('  - Precio raw:', row[11], '→ parseado:', parseIOLNumber(row[11], true));
+            console.log('  - Total raw:', row[15], '→ parseado:', parseIOLNumber(row[15], true));
+            console.log('  - Comisión raw:', row[13], '→ parseada:', parseIOLNumber(row[13], true));
           }
           
           const transaction = {
@@ -305,14 +314,14 @@ const parseIOLFile = async (file) => {
             tipoOperacion: tipoOperacion,
             fechaOperacion: fechaOperacion,
             
-            // Cantidades y precios
-            cantidad: parseNumber(row[9]),
-            precioUnitario: parseNumber(row[11]),
-            montoTotal: Math.abs(parseNumber(row[15])),
+            // Cantidades y precios (IOL usa 2 decimales implícitos en TODOS los números)
+            cantidad: parseIOLNumber(row[9], true),         // Cantidad con 2 decimales implícitos
+            precioUnitario: parseIOLNumber(row[11], true),  // Precio con 2 decimales implícitos
+            montoTotal: Math.abs(parseIOLNumber(row[15], true)),  // Total con 2 decimales implícitos
             moneda: moneda,
             
-            // Comisiones
-            comisionMonto: parseNumber(row[13]),
+            // Comisiones (con 2 decimales implícitos)
+            comisionMonto: parseIOLNumber(row[13], true),
             comisionMoneda: moneda,
             
             // Metadata
