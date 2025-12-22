@@ -146,6 +146,139 @@ const LoginForm = ({ onLogin, error }) => {
 };
 
 // ============================================
+// IMPORT FROM IOL FUNCTIONS
+// ============================================
+
+/**
+ * Parsea un archivo XLS/XLSX de IOL (formato HTML table)
+ * @param {File} file - Archivo seleccionado por el usuario
+ * @returns {Promise<Array>} - Array de transacciones parseadas
+ */
+const parseIOLFile = async (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Leer primera hoja
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convertir a JSON (array de arrays)
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+        
+        // Buscar header row (contiene "Fecha Transacción")
+        let headerRowIndex = -1;
+        for (let i = 0; i < rawData.length; i++) {
+          if (rawData[i] && rawData[i][0] && rawData[i][0].includes('Fecha Transacción')) {
+            headerRowIndex = i;
+            break;
+          }
+        }
+        
+        if (headerRowIndex === -1) {
+          throw new Error('No se encontró el header en el archivo IOL');
+        }
+        
+        // Parsear transacciones (todo lo que viene después del header)
+        const transactions = [];
+        for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+          const row = rawData[i];
+          
+          // Skip empty rows
+          if (!row || !row[0] || row[0].trim() === '') continue;
+          
+          // Detectar tipo de activo basado en Descripción
+          const descripcion = (row[6] || '').toUpperCase();
+          let tipoActivo = 'accion';
+          if (descripcion.includes('CEDEAR')) tipoActivo = 'cedear';
+          else if (descripcion.includes('BONO') || descripcion.includes('BOND')) tipoActivo = 'bono';
+          else if (descripcion.includes('LECAP') || descripcion.includes('LETRA')) tipoActivo = 'lecap';
+          else if (descripcion.includes('ON ') || descripcion.includes('OBLIG')) tipoActivo = 'on';
+          else if (descripcion.includes('FCI') || descripcion.includes('FONDO')) tipoActivo = 'fci';
+          
+          // Mapear moneda (AR$ → ARS)
+          const monedaRaw = (row[10] || '').trim();
+          let moneda = 'ARS';
+          if (monedaRaw === 'AR$' || monedaRaw === 'ARS' || monedaRaw === 'Pesos') moneda = 'ARS';
+          else if (monedaRaw === 'USD' || monedaRaw === 'U$S' || monedaRaw === 'Dolares') moneda = 'USD';
+          
+          // Parsear fecha (formato "18/2/2025 11:34:47" → "2025-02-18")
+          let fechaOperacion = '';
+          try {
+            const fechaRaw = (row[0] || '').trim();
+            if (fechaRaw) {
+              const [datePart] = fechaRaw.split(' ');
+              const [day, month, year] = datePart.split('/');
+              fechaOperacion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+          } catch (err) {
+            console.error('Error parseando fecha:', row[0], err);
+          }
+          
+          // Determinar tipo de operación
+          const tipoRaw = (row[4] || '').toLowerCase();
+          let tipoOperacion = 'compra';
+          if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
+          
+          // Parsear números (remover separadores de miles y comas)
+          const parseNumber = (str) => {
+            if (!str) return 0;
+            const cleaned = String(str).replace(/\./g, '').replace(',', '.');
+            return parseFloat(cleaned) || 0;
+          };
+          
+          const transaction = {
+            // Identificadores
+            simbolo: (row[8] || '').trim().toUpperCase(),
+            nombre: (row[6] || '').trim(),
+            tipoActivo: tipoActivo,
+            
+            // Operación
+            tipoOperacion: tipoOperacion,
+            fechaOperacion: fechaOperacion,
+            
+            // Cantidades y precios
+            cantidad: parseNumber(row[9]),
+            precioUnitario: parseNumber(row[11]),
+            montoTotal: Math.abs(parseNumber(row[15])),
+            moneda: moneda,
+            
+            // Comisiones
+            comisionMonto: parseNumber(row[13]),
+            comisionMoneda: moneda,
+            
+            // Metadata
+            exchange: (row[3] || '').trim(),
+            mercado: (row[3] || '').trim(),
+            boleto: (row[2] || '').trim(),
+            
+            // Campos para HomeFlow (se asignarán en UI)
+            usuarioId: '', // Se asignará en preview
+            observaciones: `Importado de IOL - Boleto: ${row[2] || 'N/A'}`,
+            
+            // Raw data por si acaso
+            _rawRow: row,
+          };
+          
+          transactions.push(transaction);
+        }
+        
+        resolve(transactions);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    
+    reader.onerror = (err) => reject(err);
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+// ============================================
 // EXPORT FUNCTIONS
 // ============================================
 
@@ -401,6 +534,16 @@ const App = () => {
   // Portfolio states
   const [portfolioData, setPortfolioData] = useState(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
+
+  // Import IOL states
+  const [importStep, setImportStep] = useState('upload'); // 'upload', 'preview', 'importing', 'done'
+  const [importFile, setImportFile] = useState(null);
+  const [importTransactions, setImportTransactions] = useState([]);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, errors: [] });
+  const [importError, setImportError] = useState(null);
+  
+  // Investment sub-tab: 'add' or 'import'
+  const [inversionesSubTab, setInversionesSubTab] = useState('add');
 
 
   // 1. Inicialización de Firebase (y bypass de auth en DEV)
@@ -953,6 +1096,121 @@ const App = () => {
       console.error('Error adding transaction: ', e);
       setError('Error al agregar la transacción. Revisa las reglas de seguridad de Firestore.');
     }
+  };
+
+  // --- IMPORT IOL HANDLERS ---
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImportError(null);
+    setImportFile(file);
+
+    try {
+      const transactions = await parseIOLFile(file);
+      
+      if (transactions.length === 0) {
+        setImportError('No se encontraron transacciones en el archivo');
+        return;
+      }
+
+      // Asignar usuario por defecto (el que está logueado)
+      const transactionsWithUser = transactions.map(t => ({
+        ...t,
+        usuarioId: userId || DEV_USER_ID
+      }));
+
+      setImportTransactions(transactionsWithUser);
+      setImportStep('preview');
+    } catch (err) {
+      console.error('Error parsing file:', err);
+      setImportError(`Error al procesar el archivo: ${err.message}`);
+    }
+  };
+
+  const handleImportTransactionChange = (index, field, value) => {
+    setImportTransactions(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleRemoveImportTransaction = (index) => {
+    setImportTransactions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleStartImport = async () => {
+    if (importTransactions.length === 0) {
+      setImportError('No hay transacciones para importar');
+      return;
+    }
+
+    setImportStep('importing');
+    setImportProgress({ current: 0, total: importTransactions.length, errors: [] });
+
+    const transactionsPath = getTransactionsCollectionPath(appId);
+    const errors = [];
+
+    for (let i = 0; i < importTransactions.length; i++) {
+      const transaction = importTransactions[i];
+      
+      try {
+        // Preparar transacción en formato HomeFlow
+        const cantidad = parseFloat(transaction.cantidad);
+        const precioUnitario = parseFloat(transaction.precioUnitario);
+        const comisionMonto = parseFloat(transaction.comisionMonto) || 0;
+        
+        // Calcular montos
+        const montoTotal = cantidad * precioUnitario;
+        const totalOperacion = transaction.tipoOperacion === 'compra'
+          ? montoTotal + comisionMonto
+          : montoTotal - comisionMonto;
+        const diferenciaOperacion = totalOperacion - montoTotal;
+
+        const transactionToSave = {
+          tipoOperacion: transaction.tipoOperacion,
+          activo: transaction.simbolo,
+          nombreActivo: transaction.nombre,
+          tipoActivo: transaction.tipoActivo,
+          cantidad: cantidad,
+          precioUnitario: precioUnitario,
+          montoTotal: montoTotal,
+          totalOperacion: totalOperacion,
+          diferenciaOperacion: diferenciaOperacion,
+          comision: comisionMonto > 0 ? comisionMonto : null,
+          monedaComision: comisionMonto > 0 ? transaction.comisionMoneda : null,
+          moneda: transaction.moneda,
+          exchange: transaction.exchange || '',
+          notas: transaction.observaciones || '',
+          usuarioId: transaction.usuarioId,
+          createdAt: serverTimestamp(),
+          occurredAt: dateStringToTimestamp(transaction.fechaOperacion),
+        };
+
+        await addDoc(collection(db, transactionsPath), transactionToSave);
+        
+        setImportProgress(prev => ({ ...prev, current: prev.current + 1 }));
+      } catch (err) {
+        console.error(`Error importing transaction ${i + 1}:`, err);
+        errors.push({
+          index: i + 1,
+          simbolo: transaction.simbolo,
+          error: err.message
+        });
+      }
+    }
+
+    setImportProgress(prev => ({ ...prev, errors }));
+    setImportStep('done');
+  };
+
+  const handleResetImport = () => {
+    setImportStep('upload');
+    setImportFile(null);
+    setImportTransactions([]);
+    setImportProgress({ current: 0, total: 0, errors: [] });
+    setImportError(null);
   };
 
   // --- CASHFLOW HANDLERS ---
@@ -1738,8 +1996,47 @@ const App = () => {
           <button className="hf-button hf-button-ghost" onClick={() => setTab('dashboard')}>🏠 Dashboard</button>
         </div>
         
-        <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
-          <h2 className="text-2xl font-bold mb-6 hf-text-gradient text-center">Agregar nueva transacción</h2>
+        {/* Sub-tabs para Agregar e Importar */}
+        <div style={{display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '2px solid var(--hf-border)'}}>
+          <button
+            className={inversionesSubTab === 'add' ? 'hf-tab-active' : 'hf-tab-inactive'}
+            onClick={() => setInversionesSubTab('add')}
+            style={{
+              padding: '1rem 1.5rem',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '600',
+              color: inversionesSubTab === 'add' ? 'var(--hf-primary)' : 'var(--hf-text-muted)',
+              borderBottom: inversionesSubTab === 'add' ? '3px solid var(--hf-primary)' : '3px solid transparent',
+              transition: 'all 0.2s'
+            }}
+          >
+            ➕ Agregar Transacción
+          </button>
+          <button
+            className={inversionesSubTab === 'import' ? 'hf-tab-active' : 'hf-tab-inactive'}
+            onClick={() => setInversionesSubTab('import')}
+            style={{
+              padding: '1rem 1.5rem',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '600',
+              color: inversionesSubTab === 'import' ? 'var(--hf-primary)' : 'var(--hf-text-muted)',
+              borderBottom: inversionesSubTab === 'import' ? '3px solid var(--hf-primary)' : '3px solid transparent',
+              transition: 'all 0.2s'
+            }}
+          >
+            📥 Importar desde IOL
+          </button>
+        </div>
+
+        {inversionesSubTab === 'add' ? (
+          <div className="hf-card" style={{maxWidth: '900px', margin: '0 auto'}}>
+            <h2 className="text-2xl font-bold mb-6 hf-text-gradient text-center">Agregar nueva transacción</h2>
 
           {successMessage && (
             <div className="hf-alert hf-alert-success">
@@ -1986,6 +2283,208 @@ const App = () => {
             >Agregar Transacción</button>
           </form>
         </div>
+        ) : (
+          // Import IOL Section
+          <div className="hf-card" style={{maxWidth: '1200px', margin: '0 auto'}}>
+            <h2 className="text-2xl font-bold mb-6 hf-text-gradient text-center">Importar Transacciones desde IOL</h2>
+            
+            {importStep === 'upload' && (
+              <div style={{textAlign: 'center', padding: '2rem'}}>
+                <p style={{color: 'var(--hf-text-muted)', marginBottom: '1.5rem'}}>
+                  Selecciona el archivo Excel (.xls/.xlsx) exportado desde Invertir Online
+                </p>
+                <input
+                  type="file"
+                  accept=".xls,.xlsx"
+                  onChange={handleFileSelect}
+                  style={{display: 'none'}}
+                  id="iol-file-input"
+                />
+                <label htmlFor="iol-file-input" className="hf-button hf-button-primary" style={{cursor: 'pointer', padding: '1rem 2rem', fontSize: '1.125rem'}}>
+                  📁 Seleccionar Archivo
+                </label>
+                {importError && (
+                  <div className="hf-alert hf-alert-error" style={{marginTop: '1.5rem'}}>
+                    {importError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {importStep === 'preview' && (
+              <div>
+                <div className="hf-alert hf-alert-info" style={{marginBottom: '1.5rem'}}>
+                  <strong>{importTransactions.length} transacciones</strong> encontradas. Revisa y edita si es necesario antes de importar.
+                </div>
+                
+                <div style={{maxHeight: '500px', overflowY: 'auto', marginBottom: '1.5rem'}}>
+                  {importTransactions.map((t, idx) => (
+                    <div key={idx} className="hf-card" style={{marginBottom: '1rem', padding: '1rem', background: 'var(--hf-bg-secondary)'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem'}}>
+                        <h3 style={{margin: 0, fontSize: '1.125rem', color: 'var(--hf-primary)'}}>
+                          {idx + 1}. {t.simbolo} - {t.nombre}
+                        </h3>
+                        <button
+                          onClick={() => handleRemoveImportTransaction(idx)}
+                          className="hf-button hf-button-ghost"
+                          style={{padding: '0.25rem 0.75rem'}}
+                        >
+                          ❌ Eliminar
+                        </button>
+                      </div>
+                      
+                      <div className="hf-grid-2" style={{gap: '0.75rem'}}>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Operación</label>
+                          <input
+                            type="text"
+                            value={t.tipoOperacion}
+                            readOnly
+                            className="hf-input"
+                            style={{background: 'var(--hf-bg)', fontSize: '0.875rem'}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Fecha</label>
+                          <input
+                            type="date"
+                            value={t.fechaOperacion}
+                            onChange={(e) => handleImportTransactionChange(idx, 'fechaOperacion', e.target.value)}
+                            className="hf-input"
+                            style={{fontSize: '0.875rem'}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Tipo Activo</label>
+                          <select
+                            value={t.tipoActivo}
+                            onChange={(e) => handleImportTransactionChange(idx, 'tipoActivo', e.target.value)}
+                            className="hf-select"
+                            style={{fontSize: '0.875rem'}}
+                          >
+                            <option value="cedear">Cedear</option>
+                            <option value="bono">Bono</option>
+                            <option value="lecap">Lecap</option>
+                            <option value="accion">Acción</option>
+                            <option value="on">ON</option>
+                            <option value="fci">FCI</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Usuario</label>
+                          <select
+                            value={t.usuarioId}
+                            onChange={(e) => handleImportTransactionChange(idx, 'usuarioId', e.target.value)}
+                            className="hf-select"
+                            style={{fontSize: '0.875rem'}}
+                          >
+                            {Object.entries(USER_NAMES).map(([uid, name]) => (
+                              <option key={uid} value={uid}>{name.split(' ')[0]}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Cantidad</label>
+                          <input
+                            type="text"
+                            value={t.cantidad}
+                            readOnly
+                            className="hf-input"
+                            style={{background: 'var(--hf-bg)', fontSize: '0.875rem'}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Precio</label>
+                          <input
+                            type="text"
+                            value={`${t.precioUnitario} ${t.moneda}`}
+                            readOnly
+                            className="hf-input"
+                            style={{background: 'var(--hf-bg)', fontSize: '0.875rem'}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Total</label>
+                          <input
+                            type="text"
+                            value={`${t.montoTotal} ${t.moneda}`}
+                            readOnly
+                            className="hf-input"
+                            style={{background: 'var(--hf-bg)', fontSize: '0.875rem'}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize: '0.875rem', color: 'var(--hf-text-muted)', display: 'block', marginBottom: '0.25rem'}}>Comisión</label>
+                          <input
+                            type="text"
+                            value={t.comisionMonto > 0 ? `${t.comisionMonto} ${t.comisionMoneda}` : 'N/A'}
+                            readOnly
+                            className="hf-input"
+                            style={{background: 'var(--hf-bg)', fontSize: '0.875rem'}}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div style={{display: 'flex', gap: '1rem', justifyContent: 'center'}}>
+                  <button onClick={handleResetImport} className="hf-button hf-button-ghost">
+                    ❌ Cancelar
+                  </button>
+                  <button onClick={handleStartImport} className="hf-button hf-button-primary" style={{padding: '1rem 2rem'}}>
+                    ✅ Importar {importTransactions.length} Transacciones
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {importStep === 'importing' && (
+              <div style={{textAlign: 'center', padding: '2rem'}}>
+                <h3 style={{marginBottom: '1.5rem'}}>Importando transacciones...</h3>
+                <div style={{background: 'var(--hf-bg-secondary)', borderRadius: '8px', padding: '0.5rem', marginBottom: '1rem'}}>
+                  <div 
+                    style={{
+                      height: '24px',
+                      background: 'linear-gradient(90deg, var(--hf-primary), var(--hf-accent))',
+                      borderRadius: '6px',
+                      width: `${(importProgress.current / importProgress.total) * 100}%`,
+                      transition: 'width 0.3s'
+                    }}
+                  />
+                </div>
+                <p style={{color: 'var(--hf-text-muted)', fontSize: '1.125rem'}}>
+                  {importProgress.current} de {importProgress.total}
+                </p>
+              </div>
+            )}
+
+            {importStep === 'done' && (
+              <div style={{textAlign: 'center', padding: '2rem'}}>
+                <div style={{fontSize: '4rem', marginBottom: '1rem'}}>✅</div>
+                <h3 style={{marginBottom: '1rem', color: 'var(--hf-success)'}}>Importación completada</h3>
+                <p style={{color: 'var(--hf-text-muted)', marginBottom: '1.5rem'}}>
+                  {importProgress.current - importProgress.errors.length} transacciones importadas correctamente
+                </p>
+                
+                {importProgress.errors.length > 0 && (
+                  <div className="hf-alert hf-alert-error" style={{marginBottom: '1.5rem', textAlign: 'left'}}>
+                    <strong>Errores ({importProgress.errors.length}):</strong>
+                    <ul style={{marginTop: '0.5rem', paddingLeft: '1.5rem'}}>
+                      {importProgress.errors.map((err, idx) => (
+                        <li key={idx}>Transacción {err.index} ({err.simbolo}): {err.error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <button onClick={handleResetImport} className="hf-button hf-button-primary">
+                  ✨ Importar Otro Archivo
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   } else if (tab === 'gastos') {
