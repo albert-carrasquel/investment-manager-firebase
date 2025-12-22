@@ -227,14 +227,44 @@ const parseIOLFile = async (file) => {
           if (monedaRaw === 'AR$' || monedaRaw === 'ARS' || monedaRaw === 'Pesos') moneda = 'ARS';
           else if (monedaRaw === 'USD' || monedaRaw === 'U$S' || monedaRaw === 'Dolares') moneda = 'USD';
           
-          // Parsear fecha (formato "18/2/2025 11:34:47" → "2025-02-18")
+          // Parsear fecha - manejar múltiples formatos
           let fechaOperacion = '';
           try {
             const fechaRaw = String(row[0] || '').trim();
             if (fechaRaw) {
-              const [datePart] = fechaRaw.split(' ');
-              const [day, month, year] = datePart.split('/');
-              fechaOperacion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+              // Caso 1: "18/2/2025 11:34:47" o "18/2/2025"
+              if (fechaRaw.includes('/')) {
+                const [datePart] = fechaRaw.split(' ');
+                const parts = datePart.split('/');
+                
+                if (parts.length === 3) {
+                  let [day, month, year] = parts;
+                  
+                  // Si el año es de 2 dígitos (ej: "25"), convertir a 4 dígitos
+                  if (year.length === 2) {
+                    const yearNum = parseInt(year);
+                    year = yearNum >= 50 ? `19${year}` : `20${year}`;
+                  }
+                  
+                  fechaOperacion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+              }
+              // Caso 2: "25-03-07" (YY-MM-DD) o "2025-03-07" (YYYY-MM-DD)
+              else if (fechaRaw.includes('-')) {
+                const parts = fechaRaw.split('-');
+                
+                if (parts.length === 3) {
+                  let [year, month, day] = parts;
+                  
+                  // Si el año es de 2 dígitos, convertir a 4 dígitos
+                  if (year.length === 2) {
+                    const yearNum = parseInt(year);
+                    year = yearNum >= 50 ? `19${year}` : `20${year}`;
+                  }
+                  
+                  fechaOperacion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+              }
             }
           } catch (err) {
             console.error('Error parseando fecha:', row[0], err);
@@ -245,12 +275,25 @@ const parseIOLFile = async (file) => {
           let tipoOperacion = 'compra';
           if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
           
-          // Parsear números (remover separadores de miles y comas)
+          // Parsear números (formato argentino: punto = separador de miles, coma = decimal)
+          // Ejemplo: "16.877,50" → 16877.50
           const parseNumber = (str) => {
             if (!str) return 0;
-            const cleaned = String(str).replace(/\./g, '').replace(',', '.');
+            const cleaned = String(str)
+              .replace(/\./g, '')      // Remover separador de miles (punto)
+              .replace(',', '.');      // Convertir decimal (coma) a punto
             return parseFloat(cleaned) || 0;
           };
+          
+          // Log de debug para primera transacción
+          if (transactions.length === 0) {
+            console.log('🔍 DEBUG - Primera transacción:');
+            console.log('  - Fecha raw:', row[0], '→ parseada:', fechaOperacion);
+            console.log('  - Cantidad raw:', row[9], '→ parseada:', parseNumber(row[9]));
+            console.log('  - Precio raw:', row[11], '→ parseado:', parseNumber(row[11]));
+            console.log('  - Monto raw:', row[15], '→ parseado:', parseNumber(row[15]));
+            console.log('  - Comisión raw:', row[13], '→ parseada:', parseNumber(row[13]));
+          }
           
           const transaction = {
             // Identificadores
