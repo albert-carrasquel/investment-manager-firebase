@@ -1851,7 +1851,7 @@ const App = () => {
                   <button 
                     className="hf-button" 
                     onClick={() => handleRequestCleanup('all')}
-                    style={{background: 'var(--hf-danger)', color: 'white', border: 'none'}}
+                    style={{background: 'var(--hf-warning)', color: 'white', border: 'none'}}
                   >
                     🗑️ Limpiar TODO
                   </button>
