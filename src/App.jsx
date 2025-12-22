@@ -1213,6 +1213,66 @@ const App = () => {
     setImportError(null);
   };
 
+  // --- DATABASE CLEANUP HANDLERS ---
+  const [showCleanupModal, setShowCleanupModal] = useState(false);
+  const [cleanupType, setCleanupType] = useState(''); // 'inversiones', 'cashflow', 'all'
+  const [cleanupProgress, setCleanupProgress] = useState({ current: 0, total: 0, deleting: false });
+
+  const handleRequestCleanup = (type) => {
+    setCleanupType(type);
+    setShowCleanupModal(true);
+  };
+
+  const handleCancelCleanup = () => {
+    setShowCleanupModal(false);
+    setCleanupType('');
+  };
+
+  const handleConfirmCleanup = async () => {
+    if (!cleanupType) return;
+
+    setCleanupProgress({ current: 0, total: 0, deleting: true });
+
+    try {
+      if (cleanupType === 'inversiones' || cleanupType === 'all') {
+        const transactionsPath = getTransactionsCollectionPath(appId);
+        const transactionsSnapshot = await getDocs(collection(db, transactionsPath));
+        
+        setCleanupProgress(prev => ({ ...prev, total: prev.total + transactionsSnapshot.size }));
+
+        for (const docSnapshot of transactionsSnapshot.docs) {
+          await deleteDoc(doc(db, transactionsPath, docSnapshot.id));
+          setCleanupProgress(prev => ({ ...prev, current: prev.current + 1 }));
+        }
+      }
+
+      if (cleanupType === 'cashflow' || cleanupType === 'all') {
+        const cashflowPath = getCashflowCollectionPath(appId);
+        const cashflowSnapshot = await getDocs(collection(db, cashflowPath));
+        
+        setCleanupProgress(prev => ({ ...prev, total: prev.total + cashflowSnapshot.size }));
+
+        for (const docSnapshot of cashflowSnapshot.docs) {
+          await deleteDoc(doc(db, cashflowPath, docSnapshot.id));
+          setCleanupProgress(prev => ({ ...prev, current: prev.current + 1 }));
+        }
+      }
+
+      setSuccessMessage('✅ Base de datos limpiada correctamente');
+      setTimeout(() => {
+        setSuccessMessage(null);
+        setShowCleanupModal(false);
+        setCleanupType('');
+        setCleanupProgress({ current: 0, total: 0, deleting: false });
+      }, 2000);
+
+    } catch (err) {
+      console.error('Error cleaning database:', err);
+      setError(`Error al limpiar la base de datos: ${err.message}`);
+      setCleanupProgress({ current: 0, total: 0, deleting: false });
+    }
+  };
+
   // --- CASHFLOW HANDLERS ---
   const handleCashflowInputChange = (e) => {
     const { name, value } = e.target;
@@ -1765,6 +1825,39 @@ const App = () => {
                 </button>
               </div>
             </div>
+
+            {/* Database Management (Admin only) */}
+            {isSuperAdmin && (
+              <div className="hf-card" style={{marginTop: 'var(--hf-space-lg)', borderColor: 'var(--hf-danger)'}}>
+                <h3 className="text-lg font-semibold mb-4" style={{color: 'var(--hf-danger)'}}>⚠️ Administración de Base de Datos</h3>
+                <p style={{color: 'var(--hf-text-muted)', marginBottom: '1rem', fontSize: '0.875rem'}}>
+                  <strong>Advertencia:</strong> Estas acciones son irreversibles. Asegúrate de tener un backup antes de continuar.
+                </p>
+                <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                  <button 
+                    className="hf-button" 
+                    onClick={() => handleRequestCleanup('inversiones')}
+                    style={{background: 'var(--hf-warning)', color: 'white', border: 'none'}}
+                  >
+                    🗑️ Limpiar Solo Inversiones
+                  </button>
+                  <button 
+                    className="hf-button" 
+                    onClick={() => handleRequestCleanup('cashflow')}
+                    style={{background: 'var(--hf-warning)', color: 'white', border: 'none'}}
+                  >
+                    🗑️ Limpiar Solo Cashflow
+                  </button>
+                  <button 
+                    className="hf-button" 
+                    onClick={() => handleRequestCleanup('all')}
+                    style={{background: 'var(--hf-danger)', color: 'white', border: 'none'}}
+                  >
+                    🗑️ Limpiar TODO
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="hf-card hf-alert-error">
@@ -2979,6 +3072,61 @@ const App = () => {
       {/* Modal de Confirmación */}
       {showConfirmModal && (
         <ConfirmationModal onConfirm={handleDeleteTransaction} onCancel={handleCancelDelete} />
+      )}
+      
+      {/* Modal de Limpieza de Base de Datos */}
+      {showCleanupModal && (
+        <div className="hf-modal-overlay">
+          <div className="hf-modal">
+            <h3 className="text-xl font-bold mb-4" style={{color: 'var(--hf-danger)'}}>
+              ⚠️ Confirmar Limpieza de Base de Datos
+            </h3>
+            
+            {cleanupProgress.deleting ? (
+              <div style={{textAlign: 'center', padding: '2rem 0'}}>
+                <div className="hf-loading" style={{width: '40px', height: '40px', margin: '0 auto 1rem'}}></div>
+                <p style={{marginBottom: '1rem'}}>Eliminando datos...</p>
+                <div style={{background: 'var(--hf-bg-secondary)', borderRadius: '8px', padding: '0.5rem', marginBottom: '0.5rem'}}>
+                  <div 
+                    style={{
+                      height: '20px',
+                      background: 'var(--hf-danger)',
+                      borderRadius: '6px',
+                      width: cleanupProgress.total > 0 ? `${(cleanupProgress.current / cleanupProgress.total) * 100}%` : '0%',
+                      transition: 'width 0.3s'
+                    }}
+                  />
+                </div>
+                <p style={{color: 'var(--hf-text-muted)', fontSize: '0.875rem'}}>
+                  {cleanupProgress.current} de {cleanupProgress.total} registros eliminados
+                </p>
+              </div>
+            ) : (
+              <>
+                <p style={{marginBottom: '1rem', fontSize: '1rem'}}>
+                  {cleanupType === 'all' && '¿Estás seguro de que quieres eliminar TODAS las transacciones (Inversiones y Cashflow)?'}
+                  {cleanupType === 'inversiones' && '¿Estás seguro de que quieres eliminar todas las transacciones de Inversiones?'}
+                  {cleanupType === 'cashflow' && '¿Estás seguro de que quieres eliminar todos los registros de Cashflow?'}
+                </p>
+                <div className="hf-alert hf-alert-error" style={{marginBottom: '1.5rem'}}>
+                  <strong>Esta acción es IRREVERSIBLE.</strong> Todos los datos se perderán permanentemente.
+                </div>
+                <div style={{display: 'flex', gap: '1rem', justifyContent: 'flex-end'}}>
+                  <button onClick={handleCancelCleanup} className="hf-button hf-button-ghost">
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleConfirmCleanup} 
+                    className="hf-button"
+                    style={{background: 'var(--hf-danger)', color: 'white', border: 'none'}}
+                  >
+                    Sí, Eliminar Todo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </>
   );
