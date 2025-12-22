@@ -276,8 +276,8 @@ const parseIOLFile = async (file) => {
           if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
           
           // Parser de números IOL:
-          // IOL exporta números SIN separadores y con 2 decimales implícitos en los montos
-          // Ejemplo: "181450" = $1814.50, "71620000" cantidad nominal = 716200.00 VN
+          // - CEDEARS/ACCIONES: Todos los números tienen 2 decimales implícitos
+          // - BONOS/LECAPS: Cantidad y Total tienen 2 decimales implícitos, pero Precio NO (es % del VN)
           const parseIOLNumber = (str, hasImplicitDecimals = false) => {
             if (!str) return 0;
             const numStr = String(str).trim();
@@ -285,7 +285,7 @@ const parseIOLFile = async (file) => {
             
             const num = parseFloat(numStr) || 0;
             
-            // Si tiene decimales implícitos (precios y montos), dividir por 100
+            // Si tiene decimales implícitos, dividir por 100
             if (hasImplicitDecimals) {
               return num / 100;
             }
@@ -293,13 +293,18 @@ const parseIOLFile = async (file) => {
             return num;
           };
           
+          // Determinar si el precio debe dividirse por 100
+          // Para bonos/LECAPs, el precio es un porcentaje del VN y NO tiene decimales implícitos
+          const esRentaFija = (tipoActivo === 'bono' || tipoActivo === 'lecap' || tipoActivo === 'on');
+          
           // Log de debug para primera transacción
           if (transactions.length === 0) {
             console.log('🔍 DEBUG - Primera transacción:');
+            console.log('  - Tipo activo:', tipoActivo, '- Es renta fija:', esRentaFija);
             console.log('  - Fecha raw:', row[0], '→ parseada:', fechaOperacion);
             console.log('  - Símbolo:', row[8]);
             console.log('  - Cantidad raw:', row[9], '→ parseada:', parseIOLNumber(row[9], true));
-            console.log('  - Precio raw:', row[11], '→ parseado:', parseIOLNumber(row[11], true));
+            console.log('  - Precio raw:', row[11], '→ parseado:', parseIOLNumber(row[11], !esRentaFija));
             console.log('  - Total raw:', row[15], '→ parseado:', parseIOLNumber(row[15], true));
             console.log('  - Comisión raw:', row[13], '→ parseada:', parseIOLNumber(row[13], true));
           }
@@ -314,10 +319,13 @@ const parseIOLFile = async (file) => {
             tipoOperacion: tipoOperacion,
             fechaOperacion: fechaOperacion,
             
-            // Cantidades y precios (IOL usa 2 decimales implícitos en TODOS los números)
-            cantidad: parseIOLNumber(row[9], true),         // Cantidad con 2 decimales implícitos
-            precioUnitario: parseIOLNumber(row[11], true),  // Precio con 2 decimales implícitos
-            montoTotal: Math.abs(parseIOLNumber(row[15], true)),  // Total con 2 decimales implícitos
+            // Cantidades y precios
+            // Cantidad: siempre dividir por 100 (VN en centavos o cantidad de cedears/acciones)
+            // Precio: dividir por 100 SOLO si NO es renta fija (bonos/LECAPs usan % del VN)
+            // Total: siempre dividir por 100
+            cantidad: parseIOLNumber(row[9], true),
+            precioUnitario: parseIOLNumber(row[11], !esRentaFija),  // NO dividir si es bono/LECAP
+            montoTotal: Math.abs(parseIOLNumber(row[15], true)),
             moneda: moneda,
             
             // Comisiones (con 2 decimales implícitos)
