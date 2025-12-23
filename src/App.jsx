@@ -328,14 +328,17 @@ const parseIOLFile = async (file) => {
           // PARSING DIRECTO SIN ESCALAS
           const simbolo = (row[8] || '').trim().toUpperCase();
           
-          // Parsear valores directamente del Excel (formato AR con coma decimal)
-          const cantidad = parseNumberAR(row[9]);
-          const precioUnitario = parseNumberAR(row[11]);
-          const montoTotal = parseNumberAR(row[12]); // Columna 12 = Monto sin comisión
-          const comisionMonto = parseNumberAR(row[13]);
+          // Parsear valores del Excel y aplicar escalas de IOL
+          // IOL exporta con decimales implícitos:
+          // - Cantidad: 4 decimales implícitos (÷10000)
+          // - Precio/Monto/Comisión: 2 decimales implícitos (÷100)
+          const cantidadRaw = parseNumberAR(row[9]);
+          const precioRaw = parseNumberAR(row[11]);
+          const montoRaw = parseNumberAR(row[12]); // Columna 12 = Monto sin comisión
+          const comisionRaw = parseNumberAR(row[13]);
           
           // Validación básica
-          if (cantidad === null || precioUnitario === null || montoTotal === null) {
+          if (cantidadRaw === null || precioRaw === null || montoRaw === null) {
             console.warn(`⚠️ Fila ${i + 1} - ${simbolo}: Error parseando valores`);
             errors.push({
               fila: i + 1,
@@ -347,14 +350,20 @@ const parseIOLFile = async (file) => {
             continue; // Skip esta transacción
           }
           
-          // Log de debug DETALLADO para TODAS las transacciones (necesitamos ver el patrón)
-          console.log(`\n🔍 Transacción ${transactions.length + 1} - ${simbolo} (${tipoActivo}):`);
-          console.log(`  Cantidad raw (typeof ${typeof row[9]}): "${row[9]}" → parseado: ${cantidad}`);
-          console.log(`  Precio raw (typeof ${typeof row[11]}): "${row[11]}" → parseado: ${precioUnitario}`);
-          console.log(`  Monto raw (typeof ${typeof row[12]}): "${row[12]}" → parseado: ${montoTotal}`);
-          console.log(`  Comisión raw (typeof ${typeof row[13]}): "${row[13]}" → parseado: ${comisionMonto}`);
-          console.log(`  Verificación: ${cantidad} × ${precioUnitario} = ${(cantidad * precioUnitario).toFixed(2)} vs monto: ${montoTotal.toFixed(2)}`);
-          console.log(`  ⚠️ REVISAR: ¿Cantidad parece estar × 10000? (${cantidad} vs esperado ${cantidad / 10000})`);
+          // Aplicar escalas de IOL
+          const cantidad = cantidadRaw / 10000; // 4 decimales implícitos
+          const precioUnitario = precioRaw / 100; // 2 decimales implícitos
+          const montoTotal = montoRaw / 100; // 2 decimales implícitos
+          const comisionMonto = comisionRaw ? comisionRaw / 100 : 0; // 2 decimales implícitos
+          
+          // Log de debug para primeras 3 transacciones
+          if (transactions.length < 3) {
+            console.log(`\n🔍 Transacción ${transactions.length + 1} - ${simbolo} (${tipoActivo}):`);
+            console.log(`  Cantidad: ${cantidadRaw} ÷ 10000 = ${cantidad.toFixed(4)}`);
+            console.log(`  Precio: ${precioRaw} ÷ 100 = ${precioUnitario.toFixed(2)}`);
+            console.log(`  Monto: ${montoRaw} ÷ 100 = ${montoTotal.toFixed(2)}`);
+            console.log(`  Verificación: ${cantidad.toFixed(4)} × ${precioUnitario.toFixed(2)} = ${(cantidad * precioUnitario).toFixed(2)} vs ${montoTotal.toFixed(2)}`);
+          }
           
           const transaction = {
             // Identificadores
