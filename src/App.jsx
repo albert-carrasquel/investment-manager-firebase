@@ -347,15 +347,14 @@ const parseIOLFile = async (file) => {
             continue; // Skip esta transacción
           }
           
-          // Log de debug para primeras 3 transacciones
-          if (transactions.length < 3) {
-            console.log(`\n🔍 Transacción ${transactions.length + 1} - ${simbolo} (${tipoActivo}):`);
-            console.log(`  Cantidad raw: "${row[9]}" → parseado: ${cantidad}`);
-            console.log(`  Precio raw: "${row[11]}" → parseado: ${precioUnitario}`);
-            console.log(`  Monto raw: "${row[12]}" → parseado: ${montoTotal}`);
-            console.log(`  Comisión raw: "${row[13]}" → parseado: ${comisionMonto}`);
-            console.log(`  Verificación: ${cantidad} × ${precioUnitario} = ${(cantidad * precioUnitario).toFixed(2)} vs monto: ${montoTotal.toFixed(2)}`);
-          }
+          // Log de debug DETALLADO para TODAS las transacciones (necesitamos ver el patrón)
+          console.log(`\n🔍 Transacción ${transactions.length + 1} - ${simbolo} (${tipoActivo}):`);
+          console.log(`  Cantidad raw (typeof ${typeof row[9]}): "${row[9]}" → parseado: ${cantidad}`);
+          console.log(`  Precio raw (typeof ${typeof row[11]}): "${row[11]}" → parseado: ${precioUnitario}`);
+          console.log(`  Monto raw (typeof ${typeof row[12]}): "${row[12]}" → parseado: ${montoTotal}`);
+          console.log(`  Comisión raw (typeof ${typeof row[13]}): "${row[13]}" → parseado: ${comisionMonto}`);
+          console.log(`  Verificación: ${cantidad} × ${precioUnitario} = ${(cantidad * precioUnitario).toFixed(2)} vs monto: ${montoTotal.toFixed(2)}`);
+          console.log(`  ⚠️ REVISAR: ¿Cantidad parece estar × 10000? (${cantidad} vs esperado ${cantidad / 10000})`);
           
           const transaction = {
             // Identificadores
