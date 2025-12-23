@@ -479,6 +479,40 @@ const parseIOLFile = async (file) => {
           console.warn(`⚠️ ${errors.length} transacciones con errores de normalización:`, errors);
         }
         
+        // Log de tabla preview con primeras 5 transacciones
+        if (transactions.length > 0) {
+          console.log('\n📊 PREVIEW DE TRANSACCIONES NORMALIZADAS (primeras 5):');
+          console.table(
+            transactions.slice(0, 5).map(t => ({
+              Símbolo: t.simbolo,
+              Tipo: t.tipoActivo,
+              'Cant (norm)': t.cantidad.toFixed(4),
+              'Precio (norm)': t.precioUnitario.toFixed(2),
+              'Monto (norm)': t.montoTotal.toFixed(2),
+              'Comisión (norm)': t.comisionMonto.toFixed(2),
+              Moneda: t.moneda,
+              'Verificación': `${(t.cantidad * t.precioUnitario).toFixed(2)} ≈ ${t.montoTotal.toFixed(2)}`
+            }))
+          );
+          
+          // Log adicional de valores raw de la primera transacción
+          if (transactions[0]._rawRow) {
+            const firstRaw = transactions[0]._rawRow;
+            console.log('\n🔍 VALORES RAW DE PRIMERA TRANSACCIÓN (para debug):');
+            console.log({
+              simbolo: transactions[0].simbolo,
+              cantidadRaw: firstRaw[9],
+              precioRaw: firstRaw[11],
+              montoRaw: firstRaw[12],
+              comisionRaw: firstRaw[13],
+              '→ cantidadNorm': transactions[0].cantidad,
+              '→ precioNorm': transactions[0].precioUnitario,
+              '→ montoNorm': transactions[0].montoTotal,
+              '→ comisionNorm': transactions[0].comisionMonto
+            });
+          }
+        }
+        
         resolve(transactions);
       } catch (err) {
         reject(err);
