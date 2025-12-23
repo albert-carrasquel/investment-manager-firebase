@@ -1247,13 +1247,13 @@ const App = () => {
       const transaction = importTransactions[i];
       
       try {
-        // Preparar transacción en formato HomeFlow
+        // Usar valores directamente del archivo IOL (ya vienen parseados correctamente)
         const cantidad = parseFloat(transaction.cantidad);
         const precioUnitario = parseFloat(transaction.precioUnitario);
+        const montoTotal = parseFloat(transaction.montoTotal);  // Del archivo, NO calcular
         const comisionMonto = parseFloat(transaction.comisionMonto) || 0;
         
-        // Calcular montos
-        const montoTotal = cantidad * precioUnitario;
+        // totalOperacion = monto + comisión (solo para HomeFlow)
         const totalOperacion = transaction.tipoOperacion === 'compra'
           ? montoTotal + comisionMonto
           : montoTotal - comisionMonto;
@@ -1266,7 +1266,7 @@ const App = () => {
           tipoActivo: transaction.tipoActivo,
           cantidad: cantidad,
           precioUnitario: precioUnitario,
-          montoTotal: montoTotal,
+          montoTotal: montoTotal,  // Valor directo del archivo
           totalOperacion: totalOperacion,
           diferenciaOperacion: diferenciaOperacion,
           comision: comisionMonto > 0 ? comisionMonto : null,
