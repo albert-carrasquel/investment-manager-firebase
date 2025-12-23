@@ -146,157 +146,70 @@ const LoginForm = ({ onLogin, error }) => {
 };
 
 // ============================================
-// IMPORT FROM IOL FUNCTIONS - PARSER ROBUSTO
+// IMPORT FROM IOL FUNCTIONS - PARSER DIRECTO
 // ============================================
 
 /**
- * Parser robusto de números que maneja múltiples formatos.
- * Soporta: solo dígitos, formato AR/ES (2.411,00), formato US (2,411.00), decimales (0.00045)
+ * Parser de números argentinos (formato IOL).
+ * Respeta el formato AR con coma decimal y punto de miles.
+ * NO hace ninguna escala, solo parsea el valor tal como está.
+ * 
+ * Ejemplos:
+ *   "7,0000" → 7
+ *   "2411,00" → 2411
+ *   "126,89" → 126.89
+ *   "16.877,00" → 16877
+ *   "78.802,0000" → 78802
+ * 
+ * @param {number|string|null|undefined} value - Valor a parsear
+ * @returns {number|null} - Número parseado o null si falla
  */
-const parseFlexibleNumber = (value) => {
-  if (typeof value === 'number') return value;
-  if (!value) return 0;
-  
-  let str = String(value).trim();
-  if (str === '' || str === '0') return 0;
-  
-  // Remover espacios
-  str = str.replace(/\s/g, '');
-  
-  // Caso 1: Solo dígitos (ej: "241100")
-  if (/^\d+$/.test(str)) {
-    return parseFloat(str) || 0;
+const parseNumberAR = (value) => {
+  // Si ya es number, retornar directo
+  if (typeof value === 'number') {
+    return isNaN(value) ? null : value;
   }
   
-  // Caso 2: Formato AR/ES con miles y coma decimal (ej: "2.411,00")
-  if (/\d+\.\d+,\d+/.test(str)) {
+  // Si es null/undefined/vacío, retornar null
+  if (!value || value === '') return null;
+  
+  try {
+    let str = String(value).trim();
+    
+    // Eliminar símbolos monetarios y espacios
+    str = str.replace(/\$/g, '');
+    str = str.replace(/AR\$/g, '');
+    str = str.replace(/USD/g, '');
+    str = str.replace(/\s/g, '');
+    
+    // Si quedó vacío, retornar null
+    if (str === '' || str === '0') return 0;
+    
+    // Formato AR: punto de miles, coma decimal
+    // Ejemplo: "16.877,00" → eliminar puntos → "16877,00" → cambiar coma por punto → "16877.00"
     str = str.replace(/\./g, ''); // Quitar puntos de miles
     str = str.replace(',', '.'); // Cambiar coma decimal a punto
-    return parseFloat(str) || 0;
-  }
-  
-  // Caso 3: Formato US con comas de miles y punto decimal (ej: "2,411.00")
-  if (/\d+,\d+\.\d+/.test(str)) {
-    str = str.replace(/,/g, ''); // Quitar comas de miles
-    return parseFloat(str) || 0;
-  }
-  
-  // Caso 4: Solo coma decimal (ej: "2411,00")
-  if (/^\d+,\d+$/.test(str)) {
-    str = str.replace(',', '.');
-    return parseFloat(str) || 0;
-  }
-  
-  // Caso 5: Solo punto decimal (ej: "2411.00")
-  if (/^\d+\.\d+$/.test(str)) {
-    return parseFloat(str) || 0;
-  }
-  
-  // Default: parseFloat directo
-  return parseFloat(str) || 0;
-};
-
-/**
- * Normalización heurística de escala para transacciones IOL.
- * Prueba combinaciones de escalas {1, 100, 10000} y elige la que satisface:
- * cantidad_normalizada × precio_normalizado ≈ monto_normalizado
- * 
- * @returns {object} { success: boolean, normalized: {...}, error: string }
- */
-const normalizeTransactionScale = (raw) => {
-  const { cantidad: cantRaw, precio: precioRaw, monto: montoRaw, comision: comisionRaw, tipoActivo, simbolo } = raw;
-  
-  // 1. Parsear números raw
-  const cantParsed = parseFlexibleNumber(cantRaw);
-  const precioParsed = parseFlexibleNumber(precioRaw);
-  const montoParsed = parseFlexibleNumber(montoRaw);
-  const comisionParsed = parseFlexibleNumber(comisionRaw);
-  
-  // Validación básica
-  if (cantParsed === 0 || precioParsed === 0 || montoParsed === 0) {
-    return {
-      success: false,
-      error: `Valores cero detectados - cant:${cantRaw} precio:${precioRaw} monto:${montoRaw}`,
-      normalized: null
-    };
-  }
-  
-  // 2. Escalas posibles
-  const escalas = [1, 100, 10000];
-  const tolerancia = 0.05; // 5% de margen de error
-  
-  let mejorMatch = null;
-  let menorDiferencia = Infinity;
-  
-  // 3. Probar combinaciones de escalas
-  for (const escalaCantidad of escalas) {
-    for (const escalaPrecio of escalas) {
-      for (const escalaMonto of escalas) {
-        const cantNorm = cantParsed / escalaCantidad;
-        const precioNorm = precioParsed / escalaPrecio;
-        const montoNorm = montoParsed / escalaMonto;
-        
-        // Calcular monto esperado
-        const montoEsperado = cantNorm * precioNorm;
-        
-        // Calcular diferencia porcentual
-        const diferencia = Math.abs(montoEsperado - montoNorm) / Math.max(montoEsperado, montoNorm);
-        
-        // Si está dentro de la tolerancia, es candidato
-        if (diferencia < tolerancia && diferencia < menorDiferencia) {
-          menorDiferencia = diferencia;
-          mejorMatch = {
-            cantidad: cantNorm,
-            precioUnitario: precioNorm,
-            montoTotal: montoNorm,
-            comisionMonto: comisionParsed / escalaMonto, // Usar misma escala que monto
-            escalas: { cantidad: escalaCantidad, precio: escalaPrecio, monto: escalaMonto },
-            diferencia: diferencia,
-            montoEsperado: montoEsperado
-          };
-        }
-      }
+    
+    const result = Number(str);
+    
+    if (isNaN(result)) {
+      console.error(`❌ parseNumberAR: No se pudo parsear "${value}" → resultado: NaN`);
+      return null;
     }
+    
+    return result;
+  } catch (err) {
+    console.error(`❌ parseNumberAR: Error parseando "${value}":`, err);
+    return null;
   }
-  
-  // 4. Validar resultado
-  if (!mejorMatch) {
-    return {
-      success: false,
-      error: `No se encontró escala válida - cant:${cantRaw} precio:${precioRaw} monto:${montoRaw}`,
-      normalized: null,
-      debug: {
-        cantParsed,
-        precioParsed,
-        montoParsed,
-        producto: cantParsed * precioParsed
-      }
-    };
-  }
-  
-  // Log de debug para casos específicos
-  const isDebugSymbol = ['AMZN', 'TX26', 'S30J5', 'GLOB', 'INTC'].includes(simbolo);
-  if (isDebugSymbol) {
-    console.log(`🔍 ${simbolo} (${tipoActivo}):`);
-    console.log(`  Raw: cant=${cantRaw} precio=${precioRaw} monto=${montoRaw}`);
-    console.log(`  Normalized: cant=${mejorMatch.cantidad.toFixed(4)} precio=${mejorMatch.precioUnitario.toFixed(2)} monto=${mejorMatch.montoTotal.toFixed(2)}`);
-    console.log(`  Escalas: cant÷${mejorMatch.escalas.cantidad} precio÷${mejorMatch.escalas.precio} monto÷${mejorMatch.escalas.monto}`);
-    console.log(`  Validación: ${mejorMatch.cantidad.toFixed(4)} × ${mejorMatch.precioUnitario.toFixed(2)} = ${mejorMatch.montoEsperado.toFixed(2)} ≈ ${mejorMatch.montoTotal.toFixed(2)} (diff: ${(mejorMatch.diferencia * 100).toFixed(2)}%)`);
-  }
-  
-  return {
-    success: true,
-    normalized: mejorMatch,
-    error: null
-  };
 };
 
 /**
  * Parsea un archivo XLS/XLSX de IOL (formato HTML table).
- * Implementa normalización robusta de escalas con detección heurística.
+ * Usa parsing directo sin escalas, respetando formato AR con coma decimal.
  * 
  * @param {File} file - Archivo seleccionado por el usuario
- * @returns {Promise<Array>} - Array de transacciones parseadas con valores normalizados
+ * @returns {Promise<Array>} - Array de transacciones parseadas
  */
 const parseIOLFile = async (file) => {
   return new Promise((resolve, reject) => {
@@ -344,7 +257,7 @@ const parseIOLFile = async (file) => {
           throw new Error('No se encontró el header en el archivo IOL. Asegúrate de exportar el archivo con el formato correcto desde InvertirOnline.');
         }
         
-        // Parsear transacciones con normalización robusta
+        // Parsear transacciones con parsing directo (sin escalas)
         const transactions = [];
         const errors = [];
         
@@ -412,31 +325,37 @@ const parseIOLFile = async (file) => {
           let tipoOperacion = 'compra';
           if (tipoRaw.includes('venta') || tipoRaw.includes('sell')) tipoOperacion = 'venta';
           
-          // NORMALIZACIÓN HEURÍSTICA DE NÚMEROS
+          // PARSING DIRECTO SIN ESCALAS
           const simbolo = (row[8] || '').trim().toUpperCase();
-          const normResult = normalizeTransactionScale({
-            cantidad: row[9],
-            precio: row[11],
-            monto: row[12],  // Columna 12 = Monto sin comisión
-            comision: row[13],
-            tipoActivo,
-            simbolo
-          });
           
-          if (!normResult.success) {
-            console.warn(`⚠️ Fila ${i + 1} - ${simbolo}: ${normResult.error}`);
+          // Parsear valores directamente del Excel (formato AR con coma decimal)
+          const cantidad = parseNumberAR(row[9]);
+          const precioUnitario = parseNumberAR(row[11]);
+          const montoTotal = parseNumberAR(row[12]); // Columna 12 = Monto sin comisión
+          const comisionMonto = parseNumberAR(row[13]);
+          
+          // Validación básica
+          if (cantidad === null || precioUnitario === null || montoTotal === null) {
+            console.warn(`⚠️ Fila ${i + 1} - ${simbolo}: Error parseando valores`);
             errors.push({
               fila: i + 1,
               simbolo,
               fecha: fechaOperacion,
-              error: normResult.error,
+              error: 'No se pudo parsear cantidad, precio o monto',
               raw: { cantidad: row[9], precio: row[11], monto: row[12] }
             });
             continue; // Skip esta transacción
           }
           
-          // Usar valores normalizados (ya son numbers correctos)
-          const { cantidad, precioUnitario, montoTotal, comisionMonto } = normResult.normalized;
+          // Log de debug para primeras 3 transacciones
+          if (transactions.length < 3) {
+            console.log(`\n🔍 Transacción ${transactions.length + 1} - ${simbolo} (${tipoActivo}):`);
+            console.log(`  Cantidad raw: "${row[9]}" → parseado: ${cantidad}`);
+            console.log(`  Precio raw: "${row[11]}" → parseado: ${precioUnitario}`);
+            console.log(`  Monto raw: "${row[12]}" → parseado: ${montoTotal}`);
+            console.log(`  Comisión raw: "${row[13]}" → parseado: ${comisionMonto}`);
+            console.log(`  Verificación: ${cantidad} × ${precioUnitario} = ${(cantidad * precioUnitario).toFixed(2)} vs monto: ${montoTotal.toFixed(2)}`);
+          }
           
           const transaction = {
             // Identificadores
@@ -448,14 +367,14 @@ const parseIOLFile = async (file) => {
             tipoOperacion,
             fechaOperacion,
             
-            // Valores normalizados (ya son numbers correctos, no necesitan parseFloat)
+            // Valores parseados directamente (números reales del Excel)
             cantidad,
             precioUnitario,
             montoTotal: Math.abs(montoTotal),
             moneda,
             
-            // Comisiones normalizadas
-            comisionMonto: Math.abs(comisionMonto),
+            // Comisiones
+            comisionMonto: comisionMonto ? Math.abs(comisionMonto) : 0,
             comisionMoneda: moneda,
             
             // Metadata
@@ -474,43 +393,26 @@ const parseIOLFile = async (file) => {
           transactions.push(transaction);
         }
         
-        console.log(`✅ Parseadas ${transactions.length} transacciones correctamente`);
+        console.log(`\n✅ Parseadas ${transactions.length} transacciones correctamente`);
         if (errors.length > 0) {
-          console.warn(`⚠️ ${errors.length} transacciones con errores de normalización:`, errors);
+          console.warn(`⚠️ ${errors.length} transacciones con errores de parsing:`, errors);
         }
         
         // Log de tabla preview con primeras 5 transacciones
         if (transactions.length > 0) {
-          console.log('\n📊 PREVIEW DE TRANSACCIONES NORMALIZADAS (primeras 5):');
+          console.log('\n📊 PREVIEW DE TRANSACCIONES (primeras 5):');
           console.table(
             transactions.slice(0, 5).map(t => ({
               Símbolo: t.simbolo,
               Tipo: t.tipoActivo,
-              'Cant (norm)': t.cantidad.toFixed(4),
-              'Precio (norm)': t.precioUnitario.toFixed(2),
-              'Monto (norm)': t.montoTotal.toFixed(2),
-              'Comisión (norm)': t.comisionMonto.toFixed(2),
+              Cantidad: t.cantidad.toFixed(4),
+              Precio: t.precioUnitario.toFixed(2),
+              Monto: t.montoTotal.toFixed(2),
+              Comisión: t.comisionMonto.toFixed(2),
               Moneda: t.moneda,
-              'Verificación': `${(t.cantidad * t.precioUnitario).toFixed(2)} ≈ ${t.montoTotal.toFixed(2)}`
+              'Cant×Precio': (t.cantidad * t.precioUnitario).toFixed(2)
             }))
           );
-          
-          // Log adicional de valores raw de la primera transacción
-          if (transactions[0]._rawRow) {
-            const firstRaw = transactions[0]._rawRow;
-            console.log('\n🔍 VALORES RAW DE PRIMERA TRANSACCIÓN (para debug):');
-            console.log({
-              simbolo: transactions[0].simbolo,
-              cantidadRaw: firstRaw[9],
-              precioRaw: firstRaw[11],
-              montoRaw: firstRaw[12],
-              comisionRaw: firstRaw[13],
-              '→ cantidadNorm': transactions[0].cantidad,
-              '→ precioNorm': transactions[0].precioUnitario,
-              '→ montoNorm': transactions[0].montoTotal,
-              '→ comisionNorm': transactions[0].comisionMonto
-            });
-          }
         }
         
         resolve(transactions);
@@ -1410,11 +1312,12 @@ const App = () => {
       const transaction = importTransactions[i];
       
       try {
-        // Los valores ya vienen normalizados del parser (son numbers correctos)
-        const cantidad = transaction.cantidad;
-        const precioUnitario = transaction.precioUnitario;
-        const montoTotal = transaction.montoTotal;
-        const comisionMonto = transaction.comisionMonto || 0;
+        // Los valores ya vienen parseados del archivo (son numbers)
+        // Usamos parseNumberAR por seguridad (si alguien editó en preview)
+        const cantidad = parseNumberAR(transaction.cantidad) ?? 0;
+        const precioUnitario = parseNumberAR(transaction.precioUnitario) ?? 0;
+        const montoTotal = parseNumberAR(transaction.montoTotal) ?? 0;
+        const comisionMonto = parseNumberAR(transaction.comisionMonto) ?? 0;
         
         // totalOperacion = monto + comisión (para HomeFlow)
         const totalOperacion = transaction.tipoOperacion === 'compra'
