@@ -851,6 +851,26 @@ const App = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_transactions, newTransaction.usuarioId]);
 
+  // Reset import state when changing tabs or sub-tabs
+  useEffect(() => {
+    // Si cambiamos de tab (salimos de inversiones), resetear importador
+    if (tab !== 'inversiones') {
+      if (importStep !== 'upload') {
+        setImportStep('upload');
+        setImportTransactions([]);
+        setImportProgress({ total: 0, current: 0, errors: [] });
+      }
+    }
+    // Si estamos en inversiones pero cambiamos a "agregar", resetear importador
+    if (tab === 'inversiones' && investmentSubTab === 'agregar') {
+      if (importStep !== 'upload') {
+        setImportStep('upload');
+        setImportTransactions([]);
+        setImportProgress({ total: 0, current: 0, errors: [] });
+      }
+    }
+  }, [tab, investmentSubTab, importStep]);
+
   // Calculate Dashboard data whenever transactions or cashflows change
   useEffect(() => {
     if (!db || !isAuthReady) {
@@ -2738,9 +2758,22 @@ const App = () => {
                   </div>
                 )}
                 
-                <button onClick={handleResetImport} className="hf-button hf-button-primary">
-                  ✨ Importar Otro Archivo
-                </button>
+                <div style={{display: 'flex', gap: '1rem', justifyContent: 'center'}}>
+                  <button onClick={handleResetImport} className="hf-button hf-button-primary">
+                    ✨ Importar Otro Archivo
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setInvestmentSubTab('agregar');
+                      setImportStep('upload');
+                      setImportTransactions([]);
+                      setImportProgress({ total: 0, current: 0, errors: [] });
+                    }} 
+                    className="hf-button hf-button-ghost"
+                  >
+                    ✖️ Cerrar
+                  </button>
+                </div>
               </div>
             )}
           </div>
