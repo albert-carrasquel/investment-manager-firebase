@@ -142,10 +142,10 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 - [x] UI con preview editable antes de importar
 - [x] Batch insert con progress bar
 - [x] Manejo de errores por transacción
-- [x] **Parser robusto con detección heurística de escalas** (2024-12-23)
+- [x] **Aplicación de escalas fijas de IOL** (2025-12-23)
 **Fecha inicio**: 2025-12-22 20:00
-**Fecha fin**: 2025-12-22 21:30
-**Última actualización crítica**: 2024-12-23 (Parser robusto v2)
+**Fecha fin**: 2025-12-23 19:30
+**Última actualización**: 2025-12-23 (Escalas fijas v3)
 **Implementación**:
 - Función `parseIOLFile()`: Lee archivo XLS/XLSX con xlsx library
 - Detección automática de tipo de activo basado en campo "Descripción":
@@ -155,21 +155,23 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
   - ON/OBLIG → on
   - FCI/FONDO → fci
   - Default → acción
-- **Parser robusto de números** (v2 - 2024-12-23):
-  - `parseFlexibleNumber()`: Soporta múltiples formatos (AR/ES, US, decimales)
-  - `normalizeTransactionScale()`: Detección heurística de escalas
-  - Prueba combinaciones {1, 100, 10000} y elige la que satisface: cantidad × precio ≈ monto
-  - Validación cruzada con tolerancia de 5%
-  - Skip de filas con errores + log detallado
+- **Parser de números con escalas fijas** (v3 - 2025-12-23):
+  - `parseNumberAR()`: Parsea formato argentino (punto miles, coma decimal)
+  - Aplicación de escalas de IOL:
+    * Cantidad: ÷10000 (4 decimales implícitos)
+    * Precio: ÷100 (2 decimales implícitos)
+    * Monto: ÷100 (2 decimales implícitos)
+    * Comisión: ÷100 (2 decimales implícitos)
+  - Logging detallado para verificación
 - Mapeo de columnas IOL → HomeFlow:
   - Fecha Transacción → fechaOperacion (formato YYYY-MM-DD)
   - Tipo Transacción → tipoOperacion (Compra/Venta)
   - Símbolo → simbolo (uppercase)
   - Descripción → nombre
-  - Cantidad → cantidad (normalizada automáticamente)
-  - Precio Ponderado → precioUnitario (normalizado automáticamente)
-  - Monto (col 12) → montoTotal (normalizado automáticamente)
-  - Comisión y Derecho de Mercado → comisionMonto (normalizado automáticamente)
+  - Cantidad → cantidad (÷10000)
+  - Precio Ponderado → precioUnitario (÷100)
+  - Monto (col 12) → montoTotal (÷100)
+  - Comisión y Derecho de Mercado → comisionMonto (÷100)
   - Moneda (AR$ → ARS, USD → USD)
   - Mercado → exchange
 - UI con sub-tabs en sección Inversiones:
@@ -188,7 +190,7 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
   - `handleFileSelect()`: Procesa archivo y extrae transacciones
   - `handleImportTransactionChange()`: Edita transacciones en preview
   - `handleRemoveImportTransaction()`: Elimina transacciones
-  - `handleStartImport()`: Ejecuta batch insert con manejo de errores (simplificado en v2)
+  - `handleStartImport()`: Ejecuta batch insert con manejo de errores
   - `handleResetImport()`: Reinicia el proceso
 **Beneficios**:
 - ✅ Ahorra HORAS de carga manual
@@ -196,10 +198,9 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 - ✅ Validación automática de datos
 - ✅ Preview editable para ajustes manuales
 - ✅ Resumen detallado de importación
-- ✅ **Detección automática de escalas sin reglas rígidas** (v2)
-- ✅ **Adaptable a cambios de formato de IOL** (v2)
-- ✅ **Validación matemática robusta** (v2)
-**Documentación técnica**: Ver `PARSER_IOL_ROBUSTO.md`
+- ✅ **Escalas correctas según formato IOL**
+- ✅ **Valores precisos en Firestore**
+**Documentación técnica**: Ver `PARSER_IOL.md`
 
 ---
 
@@ -336,5 +337,12 @@ Documento de seguimiento para implementación de mejoras prioritarias en HomeFlo
 
 ---
 
-**Última actualización**: 2025-12-22
+**Última actualización**: 2025-12-26
 **Próxima revisión**: Después de testing con datos reales de producción
+
+---
+
+## 📚 Documentación Adicional
+
+- **[README.md](README.md)**: Instalación, uso y tecnologías
+- **[PARSER_IOL.md](PARSER_IOL.md)**: Documentación técnica del importador IOL

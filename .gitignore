@@ -37,7 +37,13 @@ lerna-debug.log*
 .turbo/
 .eslintcache
 .stylelintcache
-.dev-changedlog.md
+
+# Archivos de desarrollo (no subir)
+dev-changelog.md
+*_optimized.*
+*_refactored.*
+*_backup.*
+*_old.*
 
 # Firebase
 .firebase/
